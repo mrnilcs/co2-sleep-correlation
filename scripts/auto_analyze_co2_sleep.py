@@ -18,7 +18,7 @@ from pathlib import Path
 
 # --------------------- Configuration --------------------- #
 CO2_FILENAME = "co2_history_cleaned.csv"
-OURA_FILENAME = "oura_2023-09-17_2025-06-01_trends2.csv"
+OURA_FILENAME = "oura_trends.csv"
 SLEEP_START_HOUR = 22
 SLEEP_END_HOUR = 7
 NIGHT_SHIFT_HOURS = 7
