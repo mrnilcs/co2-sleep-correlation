@@ -19,9 +19,8 @@ from pathlib import Path
 # --------------------- Configuration --------------------- #
 CO2_FILENAME = "co2_history_cleaned.csv"
 OURA_FILENAME = "oura_trends.csv"
-SLEEP_START_HOUR = 22
-SLEEP_END_HOUR = 7
-NIGHT_SHIFT_HOURS = 7
+SLEEP_START_HOUR = 21
+NIGHT_SHIFT_HOURS = 0
 TIMEZONE = "Europe/Helsinki"
 
 # --------------------- Data Loading --------------------- #
@@ -42,11 +41,10 @@ def load_and_prepare_co2(path: Path) -> pd.DataFrame:
     df = df.dropna(subset=['last_changed', 'state'])
 
     df['local_ts'] = df['last_changed'].dt.tz_convert(TIMEZONE)
-    hours = df['local_ts'].dt.hour
-    sleep_mask = (hours >= SLEEP_START_HOUR) | (hours < SLEEP_END_HOUR)
-    df = df[sleep_mask].copy()
-    df['night_date'] = (df['local_ts'] - pd.Timedelta(hours=NIGHT_SHIFT_HOURS)).dt.date
+    df['hour'] = df['local_ts'].dt.hour
+    df = df[(df['hour'] >= 21) & (df['hour'] < 24)].copy()
 
+    df['night_date'] = df['local_ts'].dt.date
     return df.groupby('night_date').agg(
         avg_co2=('state', 'mean'),
         max_co2=('state', 'max'),
