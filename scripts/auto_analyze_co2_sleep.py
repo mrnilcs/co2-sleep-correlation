@@ -155,10 +155,13 @@ def main():
         merged_data = pd.merge(
             oura[['date', top_metric]], nightly, on='date', how='inner'
         ).dropna()
-        print("\n📄 Data used for strongest correlation (top 10 rows):")
-        print(merged_data.head(10).to_string(index=False))
 
-        plot_strongest_correlation(summary, nightly, oura)
+        print("\n📄 Data used for strongest correlation (top 10 rows):")
+        print(merged_data.sort_values(by=top_metric, ascending=False).head(10).to_string(index=False))
+
+        print("\n📄 Data used for strongest correlation (bottom 10 rows):")
+        print(merged_data.sort_values(by=top_metric, ascending=True).head(10).to_string(index=False))
+
 
 if __name__ == "__main__":
     main()
