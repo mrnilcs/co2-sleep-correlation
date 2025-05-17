@@ -167,12 +167,6 @@ python scripts/auto_analyze_co2_sleep.py --co2 data/co2_history.csv --oura data/
 | Resting Heart Rate | 0.60      | 0.0001  | 0.12 bpm/ppm  |
 
 
-## 📜 License
-
-This project is licensed under the MIT License.
-
----
-
 ## 📊 Visuals & Badges
 
-![Sample Plot](plots/sample_co2_sleep_correlation.png)
+![Sample Plot](plots/co2_vs_sleep_timin_score.png)
