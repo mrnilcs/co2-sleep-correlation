@@ -13,14 +13,14 @@ import sys
 import argparse
 import pandas as pd
 import matplotlib.pyplot as plt
-from scipy.stats import linregress
+from scipy.stats import linregress, t
 from pathlib import Path
 
 # --------------------- Configuration --------------------- #
 CO2_FILENAME = "co2_history_cleaned.csv"
 OURA_FILENAME = "oura_trends.csv"
-SLEEP_START_HOUR = 21
-NIGHT_SHIFT_HOURS = 0
+SLEEP_START_HOUR = 23
+NIGHT_SHIFT_HOURS = 7
 TIMEZONE = "Europe/Helsinki"
 
 # --------------------- Data Loading --------------------- #
@@ -35,6 +35,8 @@ def resolve_data_directory(user_dir: str | None) -> Path:
     return path
 
 def load_and_prepare_co2(path: Path) -> pd.DataFrame:
+    SLEEP_END_HOUR = 3  # filter from 23:00 to 03:00
+
     df = pd.read_csv(path)
     df['last_changed'] = pd.to_datetime(df['last_changed'], utc=True, errors='coerce')
     df['state'] = pd.to_numeric(df['state'], errors='coerce')
@@ -42,9 +44,13 @@ def load_and_prepare_co2(path: Path) -> pd.DataFrame:
 
     df['local_ts'] = df['last_changed'].dt.tz_convert(TIMEZONE)
     df['hour'] = df['local_ts'].dt.hour
-    df = df[(df['hour'] >= 21) & (df['hour'] < 24)].copy()
 
-    df['night_date'] = df['local_ts'].dt.date
+    # Filter CO₂ readings from 23:00 to 03:00 (spanning midnight)
+    df = df[(df['hour'] >= SLEEP_START_HOUR) | (df['hour'] < SLEEP_END_HOUR)].copy()
+
+    # Shift timestamp back to assign CO₂ to the correct night
+    df['night_date'] = (df['local_ts'] - pd.Timedelta(hours=NIGHT_SHIFT_HOURS)).dt.date
+
     return df.groupby('night_date').agg(
         avg_co2=('state', 'mean'),
         max_co2=('state', 'max'),
@@ -66,14 +72,19 @@ def analyze_correlations(nightly: pd.DataFrame, oura: pd.DataFrame) -> pd.DataFr
         merged = pd.merge(oura[['date', col]], nightly, on='date', how='inner').dropna()
         if len(merged) < 10:
             continue
-        slope, intercept, r, p_value, _ = linregress(merged['avg_co2'], merged[col])
+        slope, intercept, r, p_value, stderr = linregress(merged['avg_co2'], merged[col])
+        ci_range = t.ppf(0.975, df=len(merged)-2) * stderr
+        ci_low, ci_high = slope - ci_range, slope + ci_range
+
         results.append({
             'Metric': col,
             'N': len(merged),
             'Pearson r': round(r, 3),
             'R²': round(r**2, 3),
             'p-value': round(p_value, 4),
-            'Slope': round(slope, 3)
+            'Slope': round(slope, 3),
+            'CI Lower': round(ci_low, 3),
+            'CI Upper': round(ci_high, 3)
         })
 
     df = pd.DataFrame(results)
@@ -97,19 +108,19 @@ def plot_strongest_correlation(summary: pd.DataFrame, nightly: pd.DataFrame, our
     plt.scatter(merged['avg_co2'], merged[metric], alpha=0.7, label='Nightly data')
     plt.plot(merged['avg_co2'], slope * merged['avg_co2'] + intercept,
              color='orange', label=f"Fit line (r={top['Pearson r']})")
-    plt.title(f"{metric} vs. Avg Nighttime CO₂")
+
+    ci_text = f"95% CI: [{top['CI Lower']}, {top['CI Upper']}]"
+    plt.title(f"{metric} vs. Avg Nighttime CO₂\n{ci_text}")
     plt.xlabel("Avg CO₂ (ppm)")
     plt.ylabel(metric)
     plt.grid(True, linestyle=':')
     plt.legend()
     plt.tight_layout()
 
-    # Updated path to ../plots relative to the script
     output_path = Path(__file__).resolve().parent.parent / "plots" / f"co2_vs_{metric.replace(' ', '_').lower()}.png"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(output_path)
     plt.show()
-
 
 # --------------------- Main --------------------- #
 
@@ -138,6 +149,15 @@ def main():
         print("No correlations found.")
     else:
         print(summary.to_string(index=False))
+
+        # Show merged data used for strongest correlation
+        top_metric = summary.iloc[0]['Metric']
+        merged_data = pd.merge(
+            oura[['date', top_metric]], nightly, on='date', how='inner'
+        ).dropna()
+        print("\n📄 Data used for strongest correlation (top 10 rows):")
+        print(merged_data.head(10).to_string(index=False))
+
         plot_strongest_correlation(summary, nightly, oura)
 
 if __name__ == "__main__":
