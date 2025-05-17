@@ -54,20 +54,50 @@ def summarize_co2(df: pd.DataFrame) -> pd.DataFrame:
     print(f" - Time range: {df['local_ts'].min()} → {df['local_ts'].max()}")
     print(f" - Total filtered readings: {len(df)}")
 
-    nightly = df.groupby('night_date').agg(readings=('state', 'count')).reset_index()
-    print(f" - Nights with data: {len(nightly)}")
-    print(f" - Median readings/night: {nightly['readings'].median():.1f}")
+    # Basic nightly reading count
+    nightly_counts = df.groupby('night_date').agg(readings=('state', 'count')).reset_index()
+    print(f" - Nights with data: {len(nightly_counts)}")
+    print(f" - Median readings/night: {nightly_counts['readings'].median():.1f}")
 
-    low_quality = nightly[nightly['readings'] < MIN_CO2_READINGS_PER_NIGHT]
+    low_quality = nightly_counts[nightly_counts['readings'] < MIN_CO2_READINGS_PER_NIGHT]
     print(f" - Nights with <{MIN_CO2_READINGS_PER_NIGHT} readings: {len(low_quality)}")
-
     if not low_quality.empty:
         print("   ⚠️  Low-quality nights:")
         for _, row in low_quality.iterrows():
             print(f"     • {row['night_date']}: {row['readings']} readings")
 
+    # Extended stats per night
+    co2_stats_per_night = df.groupby('night_date')['state'].agg(['min', 'max', 'mean', 'median', 'std']).reset_index()
+    overall = co2_stats_per_night.agg({
+        'min': ['mean', 'min', 'max'],
+        'max': ['mean', 'min', 'max'],
+        'mean': ['mean', 'min', 'max'],
+        'median': ['mean', 'min', 'max'],
+        'std': ['mean', 'min', 'max']
+    }).T
+    overall.columns = ['Avg', 'Min', 'Max']
+    
+    print("\n📈 Nightly CO₂ Stats (ppm):")
+    print(overall.round(1).to_string())
+
+    try:
+        import matplotlib.pyplot as plt
+        import matplotlib.ticker as ticker
+        plt.figure(figsize=(8, 4))
+        plt.hist(co2_stats_per_night['max'], bins=10, edgecolor='black')
+        plt.title("Histogram of Max CO₂ Levels per Night")
+        plt.xlabel("Max CO₂ (ppm)")
+        plt.ylabel("Frequency")
+        plt.grid(True, linestyle='--', alpha=0.6)
+        plt.gca().xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+        plt.tight_layout()
+        plt.show()
+    except ImportError:
+        print("\n(📉 Install matplotlib to see CO₂ histogram)")
+
     print()
-    return nightly
+    return nightly_counts
+
 
 def load_oura(path: Path) -> pd.DataFrame:
     df = pd.read_csv(path)
