@@ -35,7 +35,7 @@ def resolve_data_directory(user_dir: str | None) -> Path:
     return path
 
 def load_and_prepare_co2(path: Path) -> pd.DataFrame:
-    SLEEP_END_HOUR = 3  # filter from 23:00 to 03:00
+    SLEEP_END_HOUR = 7  # filter from 23:00 to 03:00
 
     df = pd.read_csv(path)
     df['last_changed'] = pd.to_datetime(df['last_changed'], utc=True, errors='coerce')
