@@ -2,13 +2,9 @@
 """
 auto_analyze_co2_sleep.py
 
-This script analyzes correlations between nightly indoor CO₂ levels and
-all numeric sleep metrics exported from Oura Cloud Trends.
-
-- Automatically locates the ../data folder relative to script location.
-- Accepts an optional --data-dir to override the path.
-- Prints a summary of correlation results.
-- Visualizes the strongest correlation (by absolute Pearson r).
+Analyzes correlation between nightly CO₂ levels and all numeric Oura sleep metrics.
+Automatically loads and aligns data, filters for sleep-time CO₂, computes correlations,
+and plots the strongest result.
 
 Author: Your Name
 """
@@ -20,66 +16,76 @@ import matplotlib.pyplot as plt
 from scipy.stats import linregress
 from pathlib import Path
 
-def resolve_data_directory(user_dir: str | None) -> Path:
-    """Determine data directory from CLI input or default relative path."""
-    if user_dir:
-        data_dir = Path(user_dir).expanduser().resolve()
-    else:
-        # Default to ../data relative to this script
-        data_dir = Path(__file__).resolve().parent.parent / "data"
-    if not data_dir.exists():
-        sys.exit(f"❌ Data directory not found: {data_dir}")
-    return data_dir
+# --------------------- Configuration --------------------- #
+CO2_FILENAME = "co2_history_cleaned.csv"
+OURA_FILENAME = "oura_2023-09-17_2025-06-01_trends2.csv"
+SLEEP_START_HOUR = 22
+SLEEP_END_HOUR = 7
+NIGHT_SHIFT_HOURS = 7
+TIMEZONE = "Europe/Helsinki"
 
-def load_and_prepare_co2(co2_path: Path) -> pd.DataFrame:
-    """Load and preprocess CO₂ time series from Home Assistant."""
-    df = pd.read_csv(co2_path)
+# --------------------- Data Loading --------------------- #
+
+def resolve_data_directory(user_dir: str | None) -> Path:
+    if user_dir:
+        path = Path(user_dir).expanduser().resolve()
+    else:
+        path = Path(__file__).resolve().parent.parent / "data"
+    if not path.exists():
+        sys.exit(f"❌ Data directory not found: {path}")
+    return path
+
+def load_and_prepare_co2(path: Path) -> pd.DataFrame:
+    df = pd.read_csv(path)
     df['last_changed'] = pd.to_datetime(df['last_changed'], utc=True, errors='coerce')
     df['state'] = pd.to_numeric(df['state'], errors='coerce')
     df = df.dropna(subset=['last_changed', 'state'])
-    df['local_ts'] = df['last_changed'].dt.tz_convert('Europe/Helsinki')
 
-    # Filter for sleep window: 22:00–07:00 (assign to previous night)
-    mask = (df['local_ts'].dt.hour >= 4) | (df['local_ts'].dt.hour < 9)
-    df = df[mask].copy()
-    df['night_date'] = (df['local_ts'] - pd.Timedelta(hours=7)).dt.date
+    df['local_ts'] = df['last_changed'].dt.tz_convert(TIMEZONE)
+    hours = df['local_ts'].dt.hour
+    sleep_mask = (hours >= SLEEP_START_HOUR) | (hours < SLEEP_END_HOUR)
+    df = df[sleep_mask].copy()
+    df['night_date'] = (df['local_ts'] - pd.Timedelta(hours=NIGHT_SHIFT_HOURS)).dt.date
 
     return df.groupby('night_date').agg(
         avg_co2=('state', 'mean'),
-        max_co2=('state', 'max')
+        max_co2=('state', 'max'),
+        readings=('state', 'count')
     ).reset_index().rename(columns={'night_date': 'date'})
 
-def load_and_prepare_oura(oura_path: Path) -> pd.DataFrame:
-    """Load Oura trend data and extract numeric metrics with valid dates."""
-    df = pd.read_csv(oura_path)
+def load_and_prepare_oura(path: Path) -> pd.DataFrame:
+    df = pd.read_csv(path)
     df['date'] = pd.to_datetime(df['date'], errors='coerce').dt.date
     return df.dropna(subset=['date'])
 
+# --------------------- Analysis --------------------- #
+
 def analyze_correlations(nightly: pd.DataFrame, oura: pd.DataFrame) -> pd.DataFrame:
-    """Merge and compute correlations for all numeric sleep metrics."""
     results = []
     numeric_cols = oura.select_dtypes(include='number').columns
 
     for col in numeric_cols:
         merged = pd.merge(oura[['date', col]], nightly, on='date', how='inner').dropna()
         if len(merged) < 10:
-            continue  # skip low-sample metrics
-        slope, intercept, r_value, p_value, std_err = linregress(merged['avg_co2'], merged[col])
+            continue
+        slope, intercept, r, p_value, _ = linregress(merged['avg_co2'], merged[col])
         results.append({
             'Metric': col,
             'N': len(merged),
-            'Pearson r': round(r_value, 3),
-            'R²': round(r_value**2, 3),
+            'Pearson r': round(r, 3),
+            'R²': round(r**2, 3),
             'p-value': round(p_value, 4),
-            'Slope': round(slope, 3),
+            'Slope': round(slope, 3)
         })
 
-    return pd.DataFrame(results).sort_values('Pearson r')
+    df = pd.DataFrame(results)
+    return df.sort_values(by='Pearson r', key=lambda x: x.abs(), ascending=False)
+
+# --------------------- Visualization --------------------- #
 
 def plot_strongest_correlation(summary: pd.DataFrame, nightly: pd.DataFrame, oura: pd.DataFrame):
-    """Plot and save the strongest (most negative) correlation found."""
     if summary.empty:
-        print("No sufficient data for plotting.")
+        print("No valid metrics to plot.")
         return
 
     top = summary.iloc[0]
@@ -93,38 +99,43 @@ def plot_strongest_correlation(summary: pd.DataFrame, nightly: pd.DataFrame, our
     plt.scatter(merged['avg_co2'], merged[metric], alpha=0.7, label='Nightly data')
     plt.plot(merged['avg_co2'], slope * merged['avg_co2'] + intercept,
              color='orange', label=f"Fit line (r={top['Pearson r']})")
-
     plt.title(f"{metric} vs. Avg Nighttime CO₂")
-    plt.xlabel("Average Nighttime CO₂ (ppm)")
+    plt.xlabel("Avg CO₂ (ppm)")
     plt.ylabel(metric)
     plt.grid(True, linestyle=':')
     plt.legend()
     plt.tight_layout()
-    output_path = Path('docs') / f"co2_vs_{metric.replace(' ', '_').lower()}.png"
+
+    output_path = Path("docs") / f"co2_vs_{metric.replace(' ', '_').lower()}.png"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(output_path)
     plt.show()
 
+# --------------------- Main --------------------- #
+
 def main():
-    parser = argparse.ArgumentParser(description="Analyze CO₂ vs Oura sleep metrics")
-    parser.add_argument("--data-dir", help="Path to your data folder (default: ../data)")
+    parser = argparse.ArgumentParser(description="Analyze nightly CO₂ vs Oura sleep metrics")
+    parser.add_argument("--data-dir", help="Path to your data folder")
     args = parser.parse_args()
 
     data_dir = resolve_data_directory(args.data_dir)
-    co2_path = data_dir / "co2_history.csv"
-    oura_path = data_dir / "annika_oura_2024-09-19_2025-05-17_trends.csv"
+    co2_path = data_dir / CO2_FILENAME
+    oura_path = data_dir / OURA_FILENAME
 
-    if not co2_path.exists() or not oura_path.exists():
-        sys.exit(f"❌ Missing file(s) in: {data_dir}")
+    if not co2_path.exists():
+        sys.exit(f"❌ Missing file: {co2_path}")
+    if not oura_path.exists():
+        sys.exit(f"❌ Missing file: {oura_path}")
 
     print(f"📂 Using data from: {data_dir}")
     nightly = load_and_prepare_co2(co2_path)
     oura = load_and_prepare_oura(oura_path)
+
     summary = analyze_correlations(nightly, oura)
 
     print("\n📊 Correlation Summary:")
     if summary.empty:
-        print("No valid correlations found.")
+        print("No correlations found.")
     else:
         print(summary.to_string(index=False))
         plot_strongest_correlation(summary, nightly, oura)
