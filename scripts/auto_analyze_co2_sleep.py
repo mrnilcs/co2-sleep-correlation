@@ -106,10 +106,12 @@ def plot_strongest_correlation(summary: pd.DataFrame, nightly: pd.DataFrame, our
     plt.legend()
     plt.tight_layout()
 
-    output_path = Path("docs") / f"co2_vs_{metric.replace(' ', '_').lower()}.png"
+    # Updated path to ../plots relative to the script
+    output_path = Path(__file__).resolve().parent.parent / "plots" / f"co2_vs_{metric.replace(' ', '_').lower()}.png"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(output_path)
     plt.show()
+
 
 # --------------------- Main --------------------- #
 
