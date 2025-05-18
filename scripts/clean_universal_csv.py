@@ -15,7 +15,7 @@ import pandas as pd
 from pathlib import Path
 
 # --- Configuration --- #
-sensor_name = "pm10"  # <- Change this to match your sensor (e.g., 'co2', 'pm10', 'temperature')
+sensor_name = "temperature"  # <- Change this to match your sensor (e.g., 'co2', 'pm10', 'temperature')
 input_path = Path(__file__).resolve().parent.parent / "data" / f"{sensor_name}_history.csv"
 output_path = input_path.parent / f"{sensor_name}_history_cleaned.csv"
 
