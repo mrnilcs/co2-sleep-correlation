@@ -15,7 +15,7 @@ from pathlib import Path
 # --------------------- Configuration --------------------- #
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
-CO2_FILE = DATA_DIR / "co2_history_cleaned.csv"
+CO2_FILE = DATA_DIR / "pm10_history_cleaned.csv"
 OURA_FILE = DATA_DIR / "oura_trends.csv"
 
 # Sleep window definition (local time)
