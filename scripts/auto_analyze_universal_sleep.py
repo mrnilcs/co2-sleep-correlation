@@ -15,7 +15,7 @@ from pathlib import Path
 
 # --- Configuration --- #
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
-SENSOR_FILE = "co2_history.csv"
+SENSOR_FILE = "co2_history_cleaned.csv"
 OURA_FILE = "oura_trends.csv"
 TIMEZONE = "Europe/Helsinki"
 SLEEP_START_HOUR = 23
