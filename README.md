@@ -1,12 +1,12 @@
 ## 📊 The Relationship Between Indoor CO₂ Levels and Sleep Quality
 
-This project investigates the relationship between indoor carbon dioxide (CO₂) concentration during sleep and various sleep metrics as measured by the Oura Ring. Elevated CO₂ levels are known to affect cognitive performance and alertness; this study explores whether similar physiological effects may influence sleep quality in a home setting.
+Elevated carbon dioxide (CO₂) levels are known to impair cognitive performance and concentration. This project investigates whether similar physiological effects may extend to **sleep quality**, as measured by Oura Ring metrics such as REM sleep duration, deep sleep, and overall sleep score.
 
 **Research Hypothesis:**
 
 > Elevated indoor CO₂ levels during sleep are statistically associated with measurable changes in sleep quality, as recorded by Oura metrics.
 
-Preliminary analysis supports this hypothesis, with statistically significant correlations observed—especially with REM sleep duration, resting heart rate, and overall sleep score.
+Preliminary analysis supports this hypothesis. Several sleep quality indicators show deterioration around the **700 ppm CO₂ threshold**, suggesting that even modest elevations in CO₂ concentration may negatively impact restorative sleep phases such as REM and deep sleep.
 
 <table>
   <tr>
@@ -24,6 +24,7 @@ Preliminary analysis supports this hypothesis, with statistically significant co
     </td>
   </tr>
 </table>
+
 
 ---
 
