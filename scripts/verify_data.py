@@ -15,11 +15,11 @@ from pathlib import Path
 # --------------------- Configuration --------------------- #
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
-CO2_FILE = DATA_DIR / "pm10_history.csv"
+CO2_FILE = DATA_DIR / "co2_history.csv"
 OURA_FILE = DATA_DIR / "oura_trends.csv"
 
 # Sleep window definition (local time)
-SLEEP_START_HOUR = 22  # 22:00
+SLEEP_START_HOUR = 23  # 22:00
 SLEEP_END_HOUR = 7     # 07:00
 NIGHT_SHIFT_HOURS = 7  # Shift morning hours to previous date
 
@@ -83,6 +83,8 @@ def summarize_co2(df: pd.DataFrame) -> pd.DataFrame:
     try:
         import matplotlib.pyplot as plt
         import matplotlib.ticker as ticker
+
+        # Histogram of Max CO₂ Levels
         plt.figure(figsize=(8, 4))
         plt.hist(co2_stats_per_night['max'], bins=10, edgecolor='black')
         plt.title("Histogram of Max CO₂ Levels per Night")
@@ -92,11 +94,20 @@ def summarize_co2(df: pd.DataFrame) -> pd.DataFrame:
         plt.gca().xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
         plt.tight_layout()
         plt.show()
-    except ImportError:
-        print("\n(📉 Install matplotlib to see CO₂ histogram)")
 
-    print()
-    return nightly_counts
+        # ✅ Histogram of Mean CO₂ Levels
+        plt.figure(figsize=(8, 4))
+        plt.hist(co2_stats_per_night['mean'], bins=10, edgecolor='black', color='darkcyan')
+        plt.title("Histogram of Average CO₂ Levels per Night")
+        plt.xlabel("Mean CO₂ (ppm)")
+        plt.ylabel("Frequency")
+        plt.grid(True, linestyle='--', alpha=0.6)
+        plt.gca().xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+        plt.tight_layout()
+        plt.show()
+
+    except ImportError:
+        print("\n(📉 Install matplotlib to see CO₂ histograms)")
 
 
 def load_oura(path: Path) -> pd.DataFrame:
