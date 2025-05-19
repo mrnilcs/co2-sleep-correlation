@@ -21,22 +21,7 @@ To determine whether indoor CO₂ levels during sleep correlate with Oura sleep 
 
 <div align="center">
 
-<table>
-  <tr>
-    <td align="center">
-      <img src="images/m5stackairq.png" width="180" alt="M5Stack AirQ"/><br/>
-      <strong>M5Stack AirQ</strong><br/>
-      <em>SCD4x CO₂ sensor running ESPHome</em><br/>
-      [🔗 Product page](https://shop.m5stack.com/products/m5stack-atom-air-quality-kit)
-    </td>
-    <td align="center">
-      <img src="images/ouraring.png" width="180" alt="Oura Ring"/><br/>
-      <strong>Oura Ring Gen 3</strong><br/>
-      <em>Sleep and readiness metrics</em><br/>
-      [🔗 Official site](https://ouraring.com/)
-    </td>
-  </tr>
-</table>
+<table> <tr> <td align="center"> <img src="images/m5stackairq.png" alt="M5Stack AirQ" width="200"/><br/> <strong>M5Stack AirQ</strong><br/> <em>Compact air quality monitor with integrated CO₂ and particulate sensors.</em> <ul align="left"> <li>Sensors: SCD40 (CO₂), SEN55 (PM1.0–PM10, VOC, Temp, Humidity)</li> <li>Display: 1.54" E-Ink (200×200)</li> <li>Controller: ESP32-S3 (StampS3)</li> <li>Battery: 600mAh, rechargeable</li> <li>Connectivity: Wi-Fi, RTC wake support</li> <li>Mounting: LEGO-compatible, magnets, hanging ears</li> <li><a href="https://docs.m5stack.com/en/core/AirQ">View Product</a></li> </ul> </td> <td align="center"> <img src="images/ouraring.png" alt="Oura Ring 3" width="200"/><br/> <strong>Oura Ring Generation 3</strong><br/> <em>Smart ring for continuous health and sleep tracking.</em> <ul align="left"> <li>Metrics: Sleep stages, HR, HRV, SpO₂, Temp, Activity</li> <li>Battery Life: Up to 7 days</li> <li>Weight: 4–6g; Width: 7.9mm</li> <li>Water Resistance: Up to 100m (328 ft)</li> <li>Subscription: $5.99/month for full insights</li> <li>App: iOS & Android (Oura Cloud)</li> <li><a href="https://ouraring.com/">View Product</a></li> </ul> </td> </tr> </table>
 
 </div>
 
