@@ -21,40 +21,39 @@ To determine whether indoor CO₂ levels during sleep correlate with Oura sleep 
 
 <table>
   <tr>
-<td width="50%" valign="top">
-  <div align="center">
-    <img src="images/m5stackairq.png" alt="M5Stack AirQ" width="180" height="180"/>
-  </div>
-  <div align="left">
-    <strong>M5Stack AirQ</strong><br/>
-    <em>Compact air quality monitor with integrated CO₂ and environmental sensors.</em>
-    <ul>
-      <li><strong>Sensors:</strong>
+    <td width="50%" valign="top">
+      <div align="center">
+        <img src="images/m5stackairq.png" alt="M5Stack AirQ" width="180" height="180"/>
+      </div>
+      <div align="left">
+        <strong>M5Stack AirQ</strong><br/>
+        <em>Compact air quality monitor with integrated CO₂ and environmental sensors.</em>
         <ul>
-          <li><strong><a href="https://sensirion.com/products/catalog/SCD40" target="_blank">SCD40 (CO₂ sensor)</a></strong> – Compact & cost-effective photoacoustic NDIR sensor
+          <li><strong>Sensors:</strong>
             <ul>
-              <li>Accuracy: ±(50 ppm + 5% of measured value) from 400–2000 ppm</li>
-              <li>Built-in humidity and temperature compensation (via SHT4x)</li>
-              <li>WELL Building Standard™ compatible</li>
+              <li><strong><a href="https://sensirion.com/products/catalog/SCD40" target="_blank">SCD40 (CO₂ sensor)</a></strong> – Compact & cost-effective photoacoustic NDIR sensor
+                <ul>
+                  <li>Accuracy: ±(50 ppm + 5% of measured value) from 400–2000 ppm</li>
+                  <li>Built-in humidity and temperature compensation (via SHT4x)</li>
+                  <li>WELL Building Standard™ compatible</li>
+                </ul>
+              </li>
+              <li><strong><a href="https://sensirion.com/products/catalog/SEN55" target="_blank">SEN55 Environmental Node</a></strong> – Multi-parameter air quality module
+                <ul>
+                  <li>Measures PM1.0–PM10, VOCs, NOx, temperature, and humidity</li>
+                  <li>Includes proprietary algorithms for easy integration</li>
+                  <li>Compliant with RESET® and WELL Building Standard™</li>
+                </ul>
+              </li>
             </ul>
           </li>
-          <li><strong><a href="https://sensirion.com/products/catalog/SEN55" target="_blank">SEN55 Environmental Node</a></strong> – Multi-parameter air quality module
-            <ul>
-              <li>Measures PM1.0–PM10, VOCs, NOx, temperature, and humidity</li>
-              <li>Includes proprietary algorithms for straightforward integration</li>
-              <li>Compliant with RESET® and WELL Building Standard™</li>
-            </ul>
-          </li>
+          <li><strong>Display:</strong> 1.54" E-Ink (200×200 resolution)</li>
+          <li><strong>Connectivity:</strong> Wi-Fi; deep sleep with RTC wake</li>
+          <li><strong>Enclosure:</strong> LEGO-compatible, magnetic base, hanging mount</li>
+          <li><a href="https://docs.m5stack.com/en/core/AirQ" target="_blank">View M5Stack Product Page</a></li>
         </ul>
-      </li>
-      <li><strong>Display:</strong> 1.54" E-Ink (200×200 resolution)</li>
-      <li><strong>Connectivity:</strong> Wi-Fi; deep sleep with RTC wake</li>
-      <li><strong>Enclosure:</strong> LEGO-compatible, magnetic base, hanging mount</li>
-      <li><a href="https://docs.m5stack.com/en/core/AirQ" target="_blank">View M5Stack Product Page</a></li>
-    </ul>
-  </div>
-</td>
-
+      </div>
+    </td>
     <td width="50%" valign="top">
       <div align="center">
         <img src="images/ouraring.png" alt="Oura Ring 3" width="180" height="180"/>
@@ -69,13 +68,12 @@ To determine whether indoor CO₂ levels during sleep correlate with Oura sleep 
           <li>Water Resistance: Up to 100m (328 ft)</li>
           <li>Subscription: $5.99/month for full insights</li>
           <li>App: iOS & Android (Oura Cloud)</li>
-          <li><a href="https://ouraring.com/">View Product</a></li>
+          <li><a href="https://ouraring.com/" target="_blank">View Product</a></li>
         </ul>
       </div>
     </td>
   </tr>
 </table>
-
 
 
 ### 1. CO₂ Data Collection
