@@ -48,7 +48,7 @@ To determine whether indoor CO₂ levels during sleep correlate with Oura sleep 
             </ul>
           </li>
           <li>Controller: ESP32-S3 (StampS3)</li>
-          <li><a href="https://shop.m5stack.com/products/air-quality-kit-w-m5stamps3-sen55-scd40" target="_blank">View M5Stack Product Page</a></li>
+          <li><a href="https://shop.m5stack.com/products/air-quality-kit-w-m5stamps3-sen55-scd40" target="_blank">~112,50€ shipped to Finland</a></li>
         </ul>
       </div>
     </td>
@@ -66,7 +66,7 @@ To determine whether indoor CO₂ levels during sleep correlate with Oura sleep 
           <li>Water Resistance: Up to 100m (328 ft)</li>
           <li>Subscription: $5.99/month for full insights</li>
           <li>App: iOS & Android (Oura Cloud)</li>
-          <li><a href="https://ouraring.com/" target="_blank">View Product</a></li>
+          <li><a href="https://ouraring.com/" target="_blank">~220€</a></li>
         </ul>
       </div>
     </td>
