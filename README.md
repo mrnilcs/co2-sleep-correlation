@@ -72,12 +72,7 @@ To determine whether indoor CO₂ levels during sleep correlate with Oura sleep 
       </ul>
     </li>
     <li><strong>Tracked Metrics:</strong> Sleep stages, HR, HRV, SpO₂, temperature trends, activity</li>
-    <li><strong>Battery Life:</strong> Up to 7 days</li>
-    <li><strong>Weight:</strong> 4–6 g; Width: 7.9 mm</li>
-    <li><strong>Water Resistance:</strong> Up to 100 m (328 ft)</li>
-    <li><strong>Subscription:</strong> $5.99/month for advanced insights</li>
-    <li><strong>App:</strong> iOS & Android (Oura Cloud)</li>
-    <li><a href="https://ouraring.com/" target="_blank">~220 € • View Product</a></li>
+    <li><a href="https://ouraring.com/" target="_blank">~220€ View Product</a></li>
   </ul>
 </div>
 
