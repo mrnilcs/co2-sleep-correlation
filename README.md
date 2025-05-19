@@ -16,7 +16,6 @@ To determine whether indoor CO₂ levels during sleep correlate with Oura sleep 
 
 ## 🧪 Methodology
 
-
 ## 🧰 Devices Used
 
 <table>
@@ -56,59 +55,73 @@ To determine whether indoor CO₂ levels during sleep correlate with Oura sleep 
       <div align="center">
         <img src="images/ouraring.png" alt="Oura Ring 3" width="180" height="180"/>
       </div>
-      <div align="left">
-        <strong>Oura Ring Generation 3</strong><br/>
-        <em>Smart ring for continuous health and sleep tracking.</em>
-        <ul>
-          <li>Metrics: Sleep stages, HR, HRV, SpO₂, Temp, Activity</li>
-          <li>Battery Life: Up to 7 days</li>
-          <li>Weight: 4–6g; Width: 7.9mm</li>
-          <li>Water Resistance: Up to 100m (328 ft)</li>
-          <li>Subscription: $5.99/month for full insights</li>
-          <li>App: iOS & Android (Oura Cloud)</li>
-          <li><a href="https://ouraring.com/" target="_blank">~220€</a></li>
-        </ul>
-      </div>
+<div align="left">
+  <strong>Oura Ring Generation 3</strong><br/>
+  <em>Smart ring for continuous health and sleep tracking.</em>
+  <ul>
+    <li><strong>Sensors:</strong>
+      <ul>
+        <li>Infrared photoplethysmography (PPG) for heart rate and respiratory rate</li>
+        <li>Red and green LEDs for SpO₂ and daytime heart rate monitoring</li>
+        <li>Negative temperature coefficient (NTC) thermistor
+          <ul>
+            <li>Detects skin temperature changes as small as 0.13 °C</li>
+          </ul>
+        </li>
+        <li>3D accelerometer for movement and sleep stage detection</li>
+      </ul>
+    </li>
+    <li><strong>Tracked Metrics:</strong> Sleep stages, HR, HRV, SpO₂, temperature trends, activity</li>
+    <li><strong>Battery Life:</strong> Up to 7 days</li>
+    <li><strong>Weight:</strong> 4–6 g; Width: 7.9 mm</li>
+    <li><strong>Water Resistance:</strong> Up to 100 m (328 ft)</li>
+    <li><strong>Subscription:</strong> $5.99/month for advanced insights</li>
+    <li><strong>App:</strong> iOS & Android (Oura Cloud)</li>
+    <li><a href="https://ouraring.com/" target="_blank">~220 € • View Product</a></li>
+  </ul>
+</div>
+
     </td>
+
   </tr>
 </table>
 
-
 ### 1. CO₂ Data Collection
 
-* CO₂ values were recorded using a Home Assistant-integrated **SCD4x sensor** running ESPHome on an M5Stack StampS3.
-* Sampling intervals varied (1–60 seconds) over the study period depending on configuration.
-* Data was exported from Home Assistant in CSV format via the history endpoint:
+- CO₂ values were recorded using a Home Assistant-integrated **SCD4x sensor** running ESPHome on an M5Stack StampS3.
+- Sampling intervals varied (1–60 seconds) over the study period depending on configuration.
+- Data was exported from Home Assistant in CSV format via the history endpoint:
   [Sensor readings (example)](http://homeassistant.local:8123/history?entity_id=sensor.lounge_airq_co2&start_date=2024-05-31T21%3A00%3A00.000Z&end_date=2025-05-17T15%3A00%3A00.000Z)
 
 ### 2. Sleep Quality Data
 
-* Exported manually from [Oura Cloud Trends](https://cloud.ouraring.com/trends).
-* Contains nightly sleep metrics including:
+- Exported manually from [Oura Cloud Trends](https://cloud.ouraring.com/trends).
+- Contains nightly sleep metrics including:
 
-  * Total Sleep Duration
-  * REM Sleep Duration
-  * Lowest Resting Heart Rate
-  * Sleep Efficiency
-  * Deep Sleep Score
-  * Respiratory Rate
+  - Total Sleep Duration
+  - REM Sleep Duration
+  - Lowest Resting Heart Rate
+  - Sleep Efficiency
+  - Deep Sleep Score
+  - Respiratory Rate
 
 ### 3. Data Processing Workflow
 
-* CO₂ data filtered for the configured sleep window (22:00–07:00).
-* For each night:
+- CO₂ data filtered for the configured sleep window (22:00–07:00).
+- For each night:
 
-  * Compute average and maximum CO₂ values
-  * Align timestamp with Oura morning-based sleep end date
-* Datasets merged by night; inconsistent rows dropped
+  - Compute average and maximum CO₂ values
+  - Align timestamp with Oura morning-based sleep end date
+
+- Datasets merged by night; inconsistent rows dropped
 
 ### 4. Analysis Techniques
 
-* Automated scan of **all numeric Oura sleep metrics**
-* Pearson correlation, linear regression (slope, r, p-value)
-* Results sorted by absolute r-value (|r|) for interpretability
-* Visual plots generated using `matplotlib`
-* Implemented in `pandas`, `matplotlib`, and `scipy.stats`
+- Automated scan of **all numeric Oura sleep metrics**
+- Pearson correlation, linear regression (slope, r, p-value)
+- Results sorted by absolute r-value (|r|) for interpretability
+- Visual plots generated using `matplotlib`
+- Implemented in `pandas`, `matplotlib`, and `scipy.stats`
 
 ---
 
@@ -116,15 +129,16 @@ To determine whether indoor CO₂ levels during sleep correlate with Oura sleep 
 
 Based on approximately 100 matched nights, elevated CO₂ levels:
 
-* **Negatively correlate** with:
+- **Negatively correlate** with:
 
-  * REM Sleep Duration
-  * Total Sleep Score
-  * Sleep Efficiency
-* **Positively correlate** with:
+  - REM Sleep Duration
+  - Total Sleep Score
+  - Sleep Efficiency
 
-  * Resting Heart Rate
-  * Respiratory Rate
+- **Positively correlate** with:
+
+  - Resting Heart Rate
+  - Respiratory Rate
 
 ---
 
@@ -163,9 +177,9 @@ sensor.lounge_airq_co2,790.70,2024-09-17T13:00:00.000Z
 
 **Notes:**
 
-* Sampling interval varies (1–60s)
-* Some timestamps may be missing or malformed
-* Data cleaning scripts remove non-numeric values
+- Sampling interval varies (1–60s)
+- Some timestamps may be missing or malformed
+- Data cleaning scripts remove non-numeric values
 
 ### `oura_trends.csv`
 
@@ -179,18 +193,18 @@ date,Total Sleep Score,REM Sleep Duration,Lowest Resting Heart Rate,Awake Time,.
 
 **Notes:**
 
-* One row per night
-* Data filtered to include only valid entries
-* Nights may be missing due to sync issues
+- One row per night
+- Data filtered to include only valid entries
+- Nights may be missing due to sync issues
 
 ---
 
 ## ⚠️ Data Quality Considerations
 
-* CO₂ and Oura timestamps are aligned using a `night_date` logic
-* Sampling density of CO₂ values may vary across nights
-* Partial/missing data is excluded from analysis pipeline
-* Analysis includes fallback aggregation and overlap filtering
+- CO₂ and Oura timestamps are aligned using a `night_date` logic
+- Sampling density of CO₂ values may vary across nights
+- Partial/missing data is excluded from analysis pipeline
+- Analysis includes fallback aggregation and overlap filtering
 
 ---
 
@@ -223,7 +237,6 @@ python scripts/auto_analyze_co2_sleep.py --co2 data/co2_history.csv --oura data/
 | REM Sleep Duration | -0.52     | 0.001   | -0.45 min/ppm |
 | Sleep Score        | -0.48     | 0.003   | -0.32 pts/ppm |
 | Resting Heart Rate | 0.60      | 0.0001  | 0.12 bpm/ppm  |
-
 
 ## 📊 Visuals & Badges
 
