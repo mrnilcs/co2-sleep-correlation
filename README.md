@@ -78,7 +78,7 @@ To determine whether indoor CO₂ levels during sleep correlate with Oura sleep 
 
 ### 1. CO₂ Data Collection
 
-- Air quality data was collected locally using a self-hosted **Home Assistant** instance running on a Raspberry Pi.
+- Air quality data was collected into self-hosted **Home Assistant** running on a Raspberry Pi.
 - The **M5Stack AirQ** device runs a custom **ESPHome configuration** that:
   - Automatically connects to the local Wi-Fi network
   - Streams CO₂ readings directly to Home Assistant
