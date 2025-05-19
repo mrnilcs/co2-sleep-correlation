@@ -47,10 +47,8 @@ To determine whether indoor CO₂ levels during sleep correlate with Oura sleep 
               </li>
             </ul>
           </li>
-          <li><strong>Display:</strong> 1.54" E-Ink (200×200 resolution)</li>
-          <li><strong>Connectivity:</strong> Wi-Fi; deep sleep with RTC wake</li>
-          <li><strong>Enclosure:</strong> LEGO-compatible, magnetic base, hanging mount</li>
-          <li><a href="https://docs.m5stack.com/en/core/AirQ" target="_blank">View M5Stack Product Page</a></li>
+          <li>Controller: ESP32-S3 (StampS3)</li>
+          <li><a href="https://shop.m5stack.com/products/air-quality-kit-w-m5stamps3-sen55-scd40" target="_blank">View M5Stack Product Page</a></li>
         </ul>
       </div>
     </td>
