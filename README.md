@@ -17,7 +17,7 @@ To determine whether indoor CO₂ levels during sleep correlate with Oura sleep 
 ## 🧪 Methodology
 
 
-## 🧰 Devices Used in This Study
+## 🧰 Devices Used
 
 <table>
   <tr>
@@ -38,7 +38,7 @@ To determine whether indoor CO₂ levels during sleep correlate with Oura sleep 
                   <li>WELL Building Standard™ compatible</li>
                 </ul>
               </li>
-              <li><strong><a href="https://sensirion.com/products/catalog/SEN55" target="_blank">SEN55 Environmental Node</a></strong> – Multi-parameter air quality module
+              <li><strong><a href="https://sensirion.com/products/catalog/SEN55" target="_blank">SEN55 Multi Sensor Node</a></strong> – Multi-parameter air quality module
                 <ul>
                   <li>Measures PM1.0–PM10, VOCs, NOx, temperature, and humidity</li>
                   <li>Includes proprietary algorithms for easy integration</li>
