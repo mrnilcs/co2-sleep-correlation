@@ -8,12 +8,6 @@ This project investigates the relationship between indoor carbon dioxide (CO₂)
 
 Preliminary analysis supports this hypothesis, with statistically significant correlations observed—especially with REM sleep duration, resting heart rate, and overall sleep score.
 
----
-
-## 🎯 Research Objective
-
-To determine whether indoor CO₂ levels during sleep correlate with Oura sleep metrics, including REM duration, sleep efficiency, and resting heart rate, among others.
-
 <table>
   <tr>
     <td align="center">
@@ -21,15 +15,22 @@ To determine whether indoor CO₂ levels during sleep correlate with Oura sleep 
       <sub><strong>REM Sleep Duration vs CO₂ (avg)</strong></sub>
     </td>
     <td align="center">
-      <img src="highlights/resting_heart_rate_vs_co2_nightly_avg.png" width="280"/><br/>
-      <sub><strong>Resting Heart Rate vs CO₂ (avg)</strong></sub>
+      <img src="highlights/deep_sleep_duration_vs_co2_nightly_avg.png" width="280"/><br/>
+      <sub><strong>Deep Sleep Duration vs CO₂ (avg)</strong></sub>
     </td>
     <td align="center">
-      <img src="highlights/sleep_score_vs_co2_nightly_avg.png" width="280"/><br/>
-      <sub><strong>Sleep Score vs CO₂ (avg)</strong></sub>
+      <img src="highlights/total_sleep_score_vs_co2_nightly_avg.png" width="280"/><br/>
+      <sub><strong>Total Sleep Score vs CO₂ (avg)</strong></sub>
     </td>
   </tr>
 </table>
+
+---
+
+## 🎯 Research Objective
+
+To determine whether indoor CO₂ levels during sleep correlate with Oura sleep metrics, including REM duration, sleep efficiency, and resting heart rate, among others.
+
 
 ## 🧰 Devices Used
 
