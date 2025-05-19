@@ -23,7 +23,7 @@ To determine whether indoor CO₂ levels during sleep correlate with Oura sleep 
   <tr>
     <td width="50%" valign="top">
       <div align="center">
-        <img src="images/m5stackairq.png" alt="M5Stack AirQ" width="180"/><br/>
+        <img src="images/m5stackairq.png" alt="M5Stack AirQ" width="180" height="180"/>
       </div>
       <div align="left">
         <strong>M5Stack AirQ</strong><br/>
@@ -41,7 +41,7 @@ To determine whether indoor CO₂ levels during sleep correlate with Oura sleep 
     </td>
     <td width="50%" valign="top">
       <div align="center">
-        <img src="images/ouraring.png" alt="Oura Ring 3" width="180"/><br/>
+        <img src="images/ouraring.png" alt="Oura Ring 3" width="180" height="180"/>
       </div>
       <div align="left">
         <strong>Oura Ring Generation 3</strong><br/>
