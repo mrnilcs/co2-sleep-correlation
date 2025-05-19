@@ -78,13 +78,15 @@ To determine whether indoor CO₂ levels during sleep correlate with Oura sleep 
 
 ### 1. CO₂ Data Collection
 
-- Air quality values were collected using a local **Home Assistant** server running on a Raspberry Pi.
-- A **M5Stack AirQ** device (based on the ESP32-S3) was flashed with a custom **ESPHome configuration** that connects to Wi-Fi and reports CO₂ levels to Home Assistant.
-- The device includes an **SCD4x sensor** for CO₂ measurement and uses MQTT or native API integration for real-time updates.
-- Sampling intervals varied between **1–60 seconds** depending on configuration.
-- You can find the exact ESPHome configuration in this repository:  
+- Air quality data was collected locally using a self-hosted **Home Assistant** instance running on a Raspberry Pi.
+- The CO₂ sensor used was a **M5Stack AirQ** device (based on the ESP32-S3), equipped with an **SCD4x sensor**.
+- The device runs a custom **ESPHome configuration** that:
+  - Automatically connects to the local Wi-Fi network
+  - Streams CO₂ readings directly to Home Assistant
+- The full configuration used for the AirQ device is included in this repository:  
   [`home_assistant_config/airq_config.yaml`](home_assistant_config/airq_config.yaml)
-- Historical CO₂ data was exported from Home Assistant in CSV format using the built-in history tools.
+- During the study period, **sampling intervals varied between 1 and 60 seconds**, depending on testing phase and ESPHome settings.
+- Home Assistant logs the sensor values. Possible to **export historical CO₂ data in CSV format** for further analysis.
 
   Example export query:  
   [Sensor readings (example)](http://homeassistant.local:8123/history?entity_id=sensor.lounge_airq_co2&start_date=2024-05-31T21%3A00%3A00.000Z&end_date=2025-05-17T15%3A00%3A00.000Z)
