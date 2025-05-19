@@ -34,14 +34,11 @@ To determine whether indoor CO₂ levels during sleep correlate with Oura sleep 
                 <ul>
                   <li>Accuracy: ±(50 ppm + 5% of measured value) from 400–2000 ppm</li>
                   <li>Built-in humidity and temperature compensation (via SHT4x)</li>
-                  <li>WELL Building Standard™ compatible</li>
                 </ul>
               </li>
               <li><strong><a href="https://sensirion.com/products/catalog/SEN55" target="_blank">SEN55 Multi Sensor Node</a></strong> – Multi-parameter air quality module
                 <ul>
                   <li>Measures PM1.0–PM10, VOCs, NOx, temperature, and humidity</li>
-                  <li>Includes proprietary algorithms for easy integration</li>
-                  <li>Compliant with RESET® and WELL Building Standard™</li>
                 </ul>
               </li>
             </ul>
