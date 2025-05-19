@@ -14,8 +14,6 @@ Preliminary analysis supports this hypothesis, with statistically significant co
 
 To determine whether indoor CO₂ levels during sleep correlate with Oura sleep metrics, including REM duration, sleep efficiency, and resting heart rate, among others.
 
-## 🧪 Methodology
-
 ## 🧰 Devices Used
 
 <table>
@@ -75,6 +73,8 @@ To determine whether indoor CO₂ levels during sleep correlate with Oura sleep 
 
   </tr>
 </table>
+
+## 🧪 Methodology
 
 ### 1. CO₂ Data Collection
 
