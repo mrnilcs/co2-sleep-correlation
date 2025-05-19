@@ -28,13 +28,24 @@ To determine whether indoor CO₂ levels during sleep correlate with Oura sleep 
       <div align="left">
         <strong>M5Stack AirQ</strong><br/>
         <em>Compact air quality monitor with integrated CO₂ and particulate sensors.</em>
-        <ul>
-          <li>Sensors: SCD40 (CO₂), SEN55 (PM1.0–PM10, VOC, Temp, Humidity)</li>
-          <li>Display: 1.54" E-Ink (200×200)</li>
-          <li>Controller: ESP32-S3 (StampS3)</li>
-          <li>Battery: 600mAh, rechargeable</li>
-          <li>Connectivity: Wi-Fi, RTC wake support</li>
-          <li>Mounting: LEGO-compatible, magnets, hanging ears</li>
+      <ul>
+          <li><strong>Sensors:</strong>
+            <ul>
+              <li><strong>SCD40 (CO₂ sensor)</strong> – Compact & cost-effective photoacoustic NDIR sensor
+                <ul>
+                  <li>Accuracy: ±(50 ppm + 5% of measured value) from 400–2000 ppm</li>
+                  <li>Built-in humidity and temperature compensation (via SHT4x)</li>
+                  <li>WELL Building Standard™ compatible</li>
+                </ul>
+              </li>
+              <li>SEN55 – PM1.0–PM10, VOC, temperature, and humidity</li>
+            </ul>
+          </li>
+          <li><strong>Display:</strong> 1.54" E-Ink (200×200 resolution)</li>
+          <li><strong>Controller:</strong> ESP32-S3 (StampS3)</li>
+          <li><strong>Battery:</strong> 600mAh rechargeable lithium-polymer</li>
+          <li><strong>Connectivity:</strong> Wi-Fi; deep sleep with RTC wake</li>
+          <li><strong>Enclosure:</strong> LEGO-compatible, magnetic base, hanging mount</li>
           <li><a href="https://docs.m5stack.com/en/core/AirQ">View Product</a></li>
         </ul>
       </div>
