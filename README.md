@@ -81,8 +81,6 @@ To determine whether indoor CO₂ levels during sleep correlate with Oura sleep 
   </ul>
 </div>
 
-    </td>
-
   </tr>
 </table>
 
