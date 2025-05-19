@@ -84,7 +84,7 @@ To determine whether indoor CO₂ levels during sleep correlate with Oura sleep 
   - Streams CO₂ readings directly to Home Assistant
 - The full configuration used for the AirQ device is included in this repository:  
   [`home_assistant_config/airq_config.yaml`](home_assistant_config/airq_config.yaml)
-- During the study period, **sampling intervals varied between 1 and 60 seconds**, depending on testing phase and ESPHome settings.
+- During the 6 months of data collection, **sensor intervals varied between 1 hour and 1 minute**.
 - Home Assistant logs the sensor values. Possible to **export historical CO₂ data in CSV format** for further analysis.
 
   Example export query:  
