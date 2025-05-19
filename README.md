@@ -43,7 +43,7 @@ To determine whether indoor CO₂ levels during sleep correlate with Oura sleep 
               </li>
             </ul>
           </li>
-          <li>Controller: ESP32-S3 (StampS3)</li>
+          <li><strong>Controller:</strong> ESP32-S3 (StampS3)</li>
           <li><a href="https://shop.m5stack.com/products/air-quality-kit-w-m5stamps3-sen55-scd40" target="_blank">~112,50€ shipped to Finland</a></li>
         </ul>
       </div>
