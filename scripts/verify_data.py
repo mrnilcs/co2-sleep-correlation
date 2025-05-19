@@ -18,19 +18,34 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 CO2_FILE = DATA_DIR / "co2_history.csv"
 OURA_FILE = DATA_DIR / "oura_trends.csv"
 
-# Sleep window definition (local time)
-SLEEP_START_HOUR = 23  # 22:00
-SLEEP_END_HOUR = 7     # 07:00
-NIGHT_SHIFT_HOURS = 7  # Shift morning hours to previous date
-
-# Threshold for identifying low-quality CO₂ nights
+SLEEP_START_HOUR = 23
+SLEEP_END_HOUR = 7
+NIGHT_SHIFT_HOURS = 7
 MIN_CO2_READINGS_PER_NIGHT = 5
 
-# --------------------- Helper Functions --------------------- #
+# --------------------- Utility Functions --------------------- #
 
 def check_file_exists(path: Path):
     if not path.exists():
         sys.exit(f"❌ File not found: {path}")
+
+def plot_histogram(series, title, xlabel=None, color='red'):
+    import matplotlib.pyplot as plt
+    import matplotlib.ticker as ticker
+
+    if xlabel is None:
+        xlabel = series.name
+
+    plt.figure(figsize=(8, 4))
+    plt.hist(series.dropna(), bins=10, edgecolor='black', color=color)
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel("Frequency")
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.gca().xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+    plt.tight_layout()
+
+# --------------------- CO₂ Functions --------------------- #
 
 def load_and_filter_co2(path: Path) -> pd.DataFrame:
     df = pd.read_csv(path)
@@ -40,8 +55,6 @@ def load_and_filter_co2(path: Path) -> pd.DataFrame:
 
     df['local_ts'] = df['last_changed'].dt.tz_convert('Europe/Helsinki')
     df['hour'] = df['local_ts'].dt.hour
-
-    # Filter for sleep window: 22:00 → 07:00 (wraps around midnight)
     mask = (df['hour'] >= SLEEP_START_HOUR) | (df['hour'] < SLEEP_END_HOUR)
     df = df[mask].copy()
     df['night_date'] = (df['local_ts'] - pd.Timedelta(hours=NIGHT_SHIFT_HOURS)).dt.date
@@ -54,64 +67,41 @@ def summarize_co2(df: pd.DataFrame) -> pd.DataFrame:
     print(f" - Time range: {df['local_ts'].min()} → {df['local_ts'].max()}")
     print(f" - Total filtered readings: {len(df)}")
 
-    # Basic nightly reading count
     nightly_counts = df.groupby('night_date').agg(readings=('state', 'count')).reset_index()
     print(f" - Nights with data: {len(nightly_counts)}")
     print(f" - Median readings/night: {nightly_counts['readings'].median():.1f}")
 
     low_quality = nightly_counts[nightly_counts['readings'] < MIN_CO2_READINGS_PER_NIGHT]
     print(f" - Nights with <{MIN_CO2_READINGS_PER_NIGHT} readings: {len(low_quality)}")
-    if not low_quality.empty:
-        print("   ⚠️  Low-quality nights:")
-        for _, row in low_quality.iterrows():
-            print(f"     • {row['night_date']}: {row['readings']} readings")
+    for _, row in low_quality.iterrows():
+        print(f"     • {row['night_date']}: {row['readings']} readings")
 
-    # Extended stats per night
-    co2_stats_per_night = df.groupby('night_date')['state'].agg(['min', 'max', 'mean', 'median', 'std']).reset_index()
-    overall = co2_stats_per_night.agg({
+    stats = df.groupby('night_date')['state'].agg(['min', 'max', 'mean', 'median', 'std']).reset_index()
+    summary = stats.agg({
         'min': ['mean', 'min', 'max'],
         'max': ['mean', 'min', 'max'],
         'mean': ['mean', 'min', 'max'],
         'median': ['mean', 'min', 'max'],
         'std': ['mean', 'min', 'max']
     }).T
-    overall.columns = ['Avg', 'Min', 'Max']
-    
+    summary.columns = ['Avg', 'Min', 'Max']
+
     print("\n📈 Nightly CO₂ Stats (ppm):")
-    print(overall.round(1).to_string())
+    print(summary.round(1).to_string())
 
     try:
-        import matplotlib.pyplot as plt
-        import matplotlib.ticker as ticker
-
-        # Histogram of Max CO₂ Levels
-        plt.figure(figsize=(8, 4))
-        plt.hist(co2_stats_per_night['max'], bins=10, edgecolor='black')
-        plt.title("Histogram of Max CO₂ Levels per Night")
-        plt.xlabel("Max CO₂ (ppm)")
-        plt.ylabel("Frequency")
-        plt.grid(True, linestyle='--', alpha=0.6)
-        plt.gca().xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
-        plt.tight_layout()
-        plt.show()
-
-        # ✅ Histogram of Mean CO₂ Levels
-        plt.figure(figsize=(8, 4))
-        plt.hist(co2_stats_per_night['mean'], bins=10, edgecolor='black', color='darkcyan')
-        plt.title("Histogram of Average CO₂ Levels per Night")
-        plt.xlabel("Mean CO₂ (ppm)")
-        plt.ylabel("Frequency")
-        plt.grid(True, linestyle='--', alpha=0.6)
-        plt.gca().xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
-        plt.tight_layout()
-        plt.show()
-
+        plot_histogram(stats['max'], "Max CO₂ per Night", "CO₂ (ppm)")
+        plot_histogram(stats['mean'], "Average CO₂ per Night", "CO₂ (ppm)", color='darkcyan')
     except ImportError:
         print("\n(📉 Install matplotlib to see CO₂ histograms)")
 
+    return nightly_counts
+
+# --------------------- Oura Functions --------------------- #
 
 def load_oura(path: Path) -> pd.DataFrame:
     df = pd.read_csv(path)
+    df.columns = [col.strip().lower().replace(" ", "_") for col in df.columns]  # normalize names
     df['date'] = pd.to_datetime(df['date'], errors='coerce').dt.date
     df.dropna(subset=['date'], inplace=True)
     return df
@@ -122,6 +112,23 @@ def summarize_oura(df: pd.DataFrame):
     print(f" - Nights with data: {len(df)}")
     print(f" - Missing/invalid date entries: {df['date'].isna().sum()}")
     print()
+
+    # Auto-detect most relevant score column
+    score_col = next((col for col in df.columns if "sleep_score" in col or col == "sleep_score"), None)
+
+    if not score_col:
+        score_col = next((col for col in df.columns if "score" in col and col != "date"), None)
+
+    if score_col:
+        print(f"📈 Plotting column: {score_col}")
+        try:
+            plot_histogram(df[score_col], f"Histogram of {score_col.replace('_', ' ').title()}", score_col.replace('_', ' ').title(), color='mediumseagreen')
+        except ImportError:
+            print("\n(📉 Install matplotlib to see Oura sleep score histogram)")
+    else:
+        print("⚠️ No usable score column found in Oura data.")
+
+# --------------------- Overlap & Validation --------------------- #
 
 def calculate_overlap(co2_dates: set, oura_dates: set) -> list:
     overlap = sorted(co2_dates & oura_dates)
@@ -140,16 +147,12 @@ def final_verification(co2_nightly: pd.DataFrame, oura_df: pd.DataFrame, overlap
     co2_dates = set(co2_nightly['night_date'])
     oura_dates = set(oura_df['date'])
 
-    missing_in_oura = co2_dates - oura_dates
-    missing_in_co2 = oura_dates - co2_dates
+    print(f" - Nights with CO₂ but no Oura: {len(co2_dates - oura_dates)}")
+    print(f" - Nights with Oura but no CO₂: {len(oura_dates - co2_dates)}")
 
-    print(f" - Nights with CO₂ but no Oura: {len(missing_in_oura)}")
-    print(f" - Nights with Oura but no CO₂: {len(missing_in_co2)}")
-
-    # Low-quality within overlap
     low_quality = co2_nightly[co2_nightly['readings'] < MIN_CO2_READINGS_PER_NIGHT]
-    overlap_low_quality = low_quality[low_quality['night_date'].isin(overlap)]
-    print(f" - Overlapping nights with <{MIN_CO2_READINGS_PER_NIGHT} readings: {len(overlap_low_quality)}")
+    overlap_low = low_quality[low_quality['night_date'].isin(overlap)]
+    print(f" - Overlapping nights with <{MIN_CO2_READINGS_PER_NIGHT} readings: {len(overlap_low)}")
     print("✅ Data appears structurally valid.\n")
 
 # --------------------- Main --------------------- #
@@ -167,6 +170,12 @@ def main():
 
     overlap = calculate_overlap(set(co2_nightly['night_date']), set(oura_df['date']))
     final_verification(co2_nightly, oura_df, overlap)
+
+    try:
+        import matplotlib.pyplot as plt
+        plt.show()
+    except ImportError:
+        pass
 
 if __name__ == "__main__":
     main()
