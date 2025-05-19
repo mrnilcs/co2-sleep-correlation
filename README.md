@@ -87,8 +87,7 @@ To determine whether indoor CO₂ levels during sleep correlate with Oura sleep 
 - During the 6 months of data collection, **sensor intervals varied between 1 hour and 1 minute**.
 - Home Assistant logs the sensor values. Possible to **export historical CO₂ data in CSV format** for further analysis.
 
-  Example export query:  
-  [Sensor readings (example)](http://homeassistant.local:8123/history?entity_id=sensor.lounge_airq_co2&start_date=2024-05-31T21%3A00%3A00.000Z&end_date=2025-05-17T15%3A00%3A00.000Z)
+- [http://homeassistant.local:8123/history?entity_id=sensor.lounge_airq_co2&start_date=2024-05-31T21%3A00%3A00.000Z&end_date=2025-05-17T15%3A00%3A00.000Z)](http://homeassistant.local:8123/history?entity_id=sensor.lounge_airq_co2&start_date=2024-05-31T21%3A00%3A00.000Z&end_date=2025-05-17T15%3A00%3A00.000Z)
 
 ### 2. Sleep Quality Data
 
