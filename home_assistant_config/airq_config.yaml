@@ -1,0 +1,1229 @@
+substitutions:
+  devicename: lounge-airq
+  friendlyname: B40
+  location: B40
+  sensor_interval: 60s
+  sensor_interval_2: 25s
+
+esphome:
+  name: ${devicename}
+  friendly_name: ${friendlyname}
+  area: ${location}
+  platformio_options:
+    board_build.mcu: esp32s3
+    board_build.name: "M5Stack StampS3"
+    board_build.upload.flash_size: 8MB
+    board_build.upload.maximum_size: 8388608
+    board_build.vendor: M5Stack
+  on_boot:
+  - priority: 500
+    then:
+      - delay: 3s
+      - output.turn_off: enable        # If you use this to power-cycle the sensor
+      - delay: 500ms                   # Allow power line to drop
+      - output.turn_on: hold_power     # Enable sensor (pull hold low)
+      - script.execute: beep_once
+      - delay: 2500ms                  # Wait for boot completion
+      - component.update: sen55
+      - delay: 3s
+      - component.update: sen55         # Second update to retry if failed
+      - lambda: |-
+          if (id(sen55).is_failed()) {
+            ESP_LOGE("sen55", "Initialization failed after boot. Will retry on user request.");
+          } else {
+            ESP_LOGI("sen55", "Sensor initialized successfully.");
+          }
+
+  - priority: 800
+    then:
+      - pcf8563.read_time
+
+esp32:
+  board: esp32-s3-devkitc-1 #m5stack-stamps3
+  variant: esp32s3
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+
+api:
+  encryption:
+    key: "REDACTED"
+
+ota:
+  platform: esphome
+  password: "REDACTED"
+
+
+wifi:
+  ssid: "REDACTED"
+  password: "REDACTED"
+
+captive_portal:
+
+script:
+  - id: redraw_screen
+    mode: queued
+    then:
+      - lambda: |-
+          id(eink_display).update();
+
+  - id: blink_red
+    mode: restart
+    then:
+      - lambda: 'id(red_blink_counter) = 0;'  # Reset blink counter
+      - while:
+          condition:
+            lambda: 'return id(red_blink_counter) < 10;'
+          then:
+            - lambda: |-
+                auto call = id(onboard_led).make_call();
+                call.set_rgb(1.0, 0.0, 0.0);  // Bright red
+                call.perform();
+            - delay: 300ms
+            - light.turn_off: onboard_led
+            - delay: 300ms
+            - lambda: 'id(red_blink_counter) += 1;'
+      - lambda: |-
+          auto call = id(onboard_led).make_call();
+          call.set_rgb(1.0, 0.0, 0.0);  // Leave LED on
+          call.perform();
+
+  - id: read_battery_voltage_safely
+    mode: queued
+    then:
+      - delay: 500ms
+      - lambda: |-
+          int raw = analogRead(14);
+          float voltage = raw * 3.3f / 4095.0f;  // convert raw ADC to volts
+          voltage *= 2.0f;  // for voltage divider
+          id(battery_voltage).publish_state(voltage);
+          ESP_LOGI("battery", "Voltage: %.2f V", voltage);
+
+  - id: beep_once
+    then:
+      - output.ledc.set_frequency:
+          id: buzzer_output
+          frequency: "500Hz"
+      - output.set_level:
+          id: buzzer_output
+          level: "1%"
+      - delay: 20ms
+      - output.set_level:
+          id: buzzer_output
+          level: "0%"
+
+  - id: init_sen55
+    mode: queued
+    then:
+      # graceful power‑cycle → two update calls
+      - output.turn_off: enable        # cut 3V3 to the sensor
+      - delay: 500ms
+      - output.turn_on: hold_power     # re‑enable the hold pin
+      - delay: 2500ms
+      - component.update: sen55
+      - delay: 3s
+      - component.update: sen55
+      - lambda: |-
+          if (id(sen55).is_failed()) {
+            ESP_LOGE("sen55", "Manual re‑init failed ‑ still in failed state");
+          } else {
+            ESP_LOGI("sen55", "SEN55 re‑initialised successfully");
+          }
+
+
+globals:
+  - id: sen55_active
+    type: bool
+    initial_value: 'true'
+
+  - id: main_menu_index
+    type: int
+    restore_value: no
+    initial_value: '0'  # 0 = File, 1 = Edit
+
+  - id: menu_level
+    type: int
+    restore_value: no
+    initial_value: '0'    # 0 = main menu, 1 = submenu
+
+  - id: menu_index
+    type: int
+    restore_value: no
+    initial_value: '0'    # current item in main or submenu
+
+  - id: active_menu
+    type: int
+    restore_value: no
+    initial_value: '-1'   # index of selected main menu item (e.g., 0=File)
+
+  - id: menu_open
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+  - id: red_blink_counter
+    type: int
+    initial_value: '0'
+
+
+output:
+  - platform: ledc
+    pin: GPIO9
+    id: buzzer_output
+
+  - platform: gpio
+    pin: GPIO10
+    id: enable
+
+  - platform: gpio
+    id: hold_power
+    pin: GPIO46
+
+switch:
+
+  - platform: template
+    name: "Buzzer"
+    turn_on_action:
+      - output.turn_on: buzzer_output
+      - output.ledc.set_frequency:
+          id: buzzer_output
+          frequency: "500Hz"
+      - output.set_level:
+          id: buzzer_output
+          level: "5%"
+    turn_off_action:
+      - output.set_level:
+          id: buzzer_output
+          level: "0%"
+
+  - platform: template
+    name: "SEN55 Enabled"
+    id: sen55_enabled
+    restore_mode: RESTORE_DEFAULT_ON
+    optimistic: true
+    turn_on_action:
+      - lambda: 'id(sen55_active) = true;'
+    turn_off_action:
+      - lambda: 'id(sen55_active) = false;'
+
+web_server:
+   port: 80
+   include_internal: true
+
+i2c:
+  - id: bus_a
+    sda: GPIO11
+    scl: GPIO12
+    scan: true
+    frequency: 100kHz
+
+  - id: bus_b
+    sda: GPIO13
+    scl: GPIO15
+    scan: true
+    frequency: 100kHz
+
+spi:
+  clk_pin: GPIO05
+  mosi_pin: GPIO06
+
+time:
+  - platform: pcf8563
+    address: 0x51
+    update_interval: 10min
+    i2c_id: bus_a
+
+  - platform: sntp
+    id: sntp_time
+    servers:
+      - fi.pool.ntp.org
+      - time.google.com
+    timezone: "Europe/Helsinki"
+    update_interval: 15min
+    on_time_sync:
+      then:
+        - pcf8563.write_time:
+    on_time:
+      - seconds: 0
+        minutes: /1
+        then:
+          - script.execute: read_battery_voltage_safely
+
+
+light:
+  - platform: neopixelbus
+    type: GRB  # WS2812 LEDs use GRB color order
+    variant: WS2812
+    pin: GPIO21  # Data pin connected to the onboard LED
+    num_leds: 1  # Only one LED
+    name: "Onboard RGB LED"
+    id: onboard_led
+
+select:
+  - platform: template
+    id: led_mode
+    name: "LED Mode"
+    optimistic: true
+    options:
+      - "Auto"
+      - "Manual"
+      - "Off"
+    initial_option: "Auto"
+
+  - platform: template
+    name: "LED Color"
+    id: led_color
+    options:
+      - "Blue Low"
+      - "Blue High"
+      - "Red Low"
+      - "Red High"
+      - "Green Low"
+      - "Green High"
+    initial_option: "Blue High"
+    set_action:
+      - lambda: |-
+          auto call = id(onboard_led).turn_on();
+
+          if (x == "Blue Low") {
+            call.set_rgb(0.0, 0.0, 0.1);
+          } else if (x == "Blue High") {
+            call.set_rgb(0.0, 0.0, 0.5);
+          } else if (x == "Red Low") {
+            call.set_rgb(0.3, 0.0, 0.0);
+          } else if (x == "Red High") {
+            call.set_rgb(1.0, 0.0, 0.0);
+          } else if (x == "Green Low") {
+            call.set_rgb(0.0, 0.2, 0.0);
+          } else if (x == "Green High") {
+            call.set_rgb(0.0, 1.0, 0.0);
+          }
+
+          call.perform();
+
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: IP
+    ssid:
+      name: SSID
+    bssid:
+      name: BSSID
+    mac_address:
+      name: MAC
+    dns_address:
+      name: DNS
+
+  - platform: template
+    name: "VOC IAQ Classification"
+    id: iaq_voc
+    icon: "mdi:checkbox-marked-circle-outline"
+    lambda: |-
+      if (int(id(voc).state) < 100.0) {
+        return {"Ideal"};
+      }
+      else if (int(id(voc).state) <= 200.0) {
+        return {"Good"};
+      }
+      else if (int(id(voc).state) <= 300.0) {
+        return {"Light"};
+      }
+      else if (int(id(voc).state) <= 400.0) {
+        return {"Moderate"};
+      }
+      else if (int(id(voc).state) <= 500.0) {
+        return {"Heavy"};
+      }
+      else {
+        return {"unknown"};
+      }
+
+  - platform: template
+    name: "CO2 IAQ Classification"
+    id: iaq_co2
+    icon: "mdi:checkbox-marked-circle-outline"
+    lambda: |-
+      if (int(id(CO2).state) < 800.0) {
+        return {"Ideal"};
+      }
+      else if (int(id(CO2).state) <= 1000.0) {
+        return {"Good"};
+      }
+      else if (int(id(CO2).state) <= 1500.0) {
+        return {"Moderate"};
+      }
+      else if (int(id(CO2).state) <= 2000.0) {
+        return {"Poor"};
+      }
+      else if (int(id(CO2).state) <= 5000.0) {
+        return {"Unhealthy"};
+      }
+      else {
+        return {"Severe"};
+      }
+
+
+  - platform: template
+    name: "NOX IAQ Classification"
+    id: iaq_nox
+    icon: "mdi:checkbox-marked-circle-outline"
+    lambda: |-
+      if (int(id(nox).state) < 100.0) {
+        return {"Ideal"};
+      }
+      else if (int(id(nox).state) <= 200.0) {
+        return {"Good"};
+      }
+      else if (int(id(nox).state) <= 300.0) {
+        return {"Light"};
+      }
+      else if (int(id(nox).state) <= 400.0) {
+        return {"Moderate"};
+      }
+      else if (int(id(nox).state) <= 500.0) {
+        return {"Heavy"};
+      }
+      else {
+        return {"unknown"};
+      }
+
+  - platform: template
+    name: "PM2.5 IAQ Classification"
+    id: iaq_pm25
+    icon: "mdi:checkbox-marked-circle-outline"
+    lambda: |-
+      if (int(id(PM2_5).state) < 2.0) {
+        return {"Ideal"};
+      }
+      else if (int(id(PM2_5).state) <= 5.0) {
+        return {"Good"};
+      }
+      else if (int(id(PM2_5).state) <= 10.0) {
+        return {"Moderate"};
+      }
+      else if (int(id(PM2_5).state) <= 20.0) {
+        return {"Poor"};
+      }
+      else if (int(id(PM2_5).state) <= 40.0) {
+        return {"Unhealthy"};
+      }
+      else {
+        return {"Severe"};
+      }
+
+
+sensor:
+  - platform: scd4x
+    co2:
+      name: CO2
+      id: CO2
+      on_value:
+        then:
+          - if:
+              condition:
+                lambda: 'return id(led_mode).state == "Auto" && x > 1200.0f;'
+              then:
+                - script.execute: blink_red
+
+          - lambda: |-
+              float co2 = x;
+
+              if (co2 < 500.0f) {
+                auto call = id(onboard_led).turn_on();
+                call.set_rgb(0.0f, 1.0f, 0.0f);  // Bright green
+                call.perform();
+              } else if (co2 >= 500.0f && co2 < 700.0f) {
+                auto call = id(onboard_led).turn_on();
+                call.set_rgb(0.0f, 0.0f, 0.5f);  // Bright blue
+                call.perform();
+              } else if (co2 >= 700.0f && co2 < 800.0f) {
+                auto call = id(onboard_led).turn_on();
+                call.set_rgb(0.0f, 0.0f, 0.2f);  // Dim blue
+                call.perform();
+              } else if (co2 >= 800.0f && co2 < 1000.0f) {
+                auto call = id(onboard_led).turn_on();
+                call.set_rgb(0.2f, 0.0f, 0.0f);  // Dim red
+                call.perform();
+              } else if (co2 >= 1000.0f && co2 <= 1200.0f) {
+                auto call = id(onboard_led).turn_on();
+                call.set_rgb(1.0f, 0.0f, 0.0f);  // Bright red
+                call.perform();
+              } else {
+                id(onboard_led).turn_off();  // Out of range
+              }
+    temperature:
+      name: CO2 Temperature
+      id: CO2_temperature
+      filters:
+        - lambda: |-
+            float MIN_VALUE = -40.0;
+            float MAX_VALUE = 100.0;
+            if (MIN_VALUE <= x && x <= MAX_VALUE) return x;
+            else return {};      
+    humidity:
+      name: CO2 Humidity
+      id: CO2_humidity
+      filters:
+        - lambda: |-
+            float MIN_VALUE = 0.0;
+            float MAX_VALUE = 100.0;
+            if (MIN_VALUE <= x && x <= MAX_VALUE) return x;
+            else return {};      
+    altitude_compensation: 0m
+    address: 0x62
+    update_interval: $sensor_interval
+    i2c_id: bus_a
+
+  - platform: wifi_signal # Reports the WiFi signal strength/RSSI in dB
+    name: "Wifi Signal dB"
+    id: wifi_signal_db
+    update_interval: 60s
+    entity_category: "diagnostic"
+
+  - platform: sen5x
+    id: sen55
+    pm_1_0:
+      name: "PM 1"
+      id: PM1_0
+      accuracy_decimals: 2
+    pm_2_5:
+      name: "PM 2.5"
+      id: PM2_5
+      accuracy_decimals: 2
+    pm_4_0:
+      name: "PM 4"
+      id: PM4_0
+      accuracy_decimals: 2
+    pm_10_0:
+      name: "PM 10"
+      id: PM10_0
+      accuracy_decimals: 2
+    temperature:
+      name: "SEN55 Temperature"
+      id: sen55_temperature
+      accuracy_decimals: 2
+    humidity:
+      name: "SEN55 Humidity"
+      id: sen55_humidity
+      accuracy_decimals: 2
+    voc:
+      name: VOC
+      id: voc
+      accuracy_decimals: 2
+      algorithm_tuning:
+        index_offset: 100
+        learning_time_offset_hours: 12
+        learning_time_gain_hours: 12
+        gating_max_duration_minutes: 180
+        std_initial: 50
+        gain_factor: 230
+    nox:
+      name: NOX
+      id: nox
+      accuracy_decimals: 2      
+      algorithm_tuning:
+        index_offset: 100
+        learning_time_offset_hours: 12
+        learning_time_gain_hours: 12
+        gating_max_duration_minutes: 180
+        std_initial: 50
+        gain_factor: 230
+    temperature_compensation:
+      offset: 0
+      normalized_offset_slope: 0
+      time_constant: 0
+    acceleration_mode: low
+    store_baseline: true
+    address: 0x69
+    update_interval: $sensor_interval
+    i2c_id: bus_a
+
+  - platform: template
+    name: Temperature
+    id: temperature
+    lambda: |-
+      return (( id(sen55_temperature).state + id(CO2_temperature).state ) / 2 ) - id(temperature_offset).state;
+    unit_of_measurement: "°C"
+    icon: "mdi:thermometer"
+    device_class: "temperature"
+    state_class: "measurement"
+    update_interval: $sensor_interval
+    accuracy_decimals: 2
+
+  - platform: template
+    name: Humidity
+    id: humidity
+    lambda: |-
+      return (( id(sen55_humidity).state + id(CO2_humidity).state ) / 2) - id(humidity_offset).state;
+    unit_of_measurement: "%"
+    icon: "mdi:water-percent"
+    device_class: "humidity"
+    state_class: "measurement"    
+    update_interval: $sensor_interval
+    accuracy_decimals: 2
+
+  - platform: template
+    name: "Battery Voltage"
+    id: battery_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    device_class: voltage
+    state_class: measurement
+    update_interval: never  # optional
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO0
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    name: "Button A"
+    on_press:
+      then:
+        - display_menu.down: main_menu
+        - script.execute: redraw_screen
+        - script.execute: redraw_screen
+
+  - platform: gpio
+    pin:
+      number: GPIO08
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    name: "Button B"
+    on_press:
+      then:
+        - if:
+            condition:
+              display_menu.is_active: main_menu
+            then:
+              - display_menu.enter: main_menu
+            else:
+              - display_menu.show: main_menu
+        - script.execute: redraw_screen
+
+button:
+  - platform: restart
+    name: Restart
+    id: reboot_button
+
+  - platform: template
+    name: "CO2 Force Manual Calibration"
+    entity_category: "config"
+    on_press:
+      then:
+        - scd4x.perform_forced_calibration:
+            value: !lambda 'return id(co2_cal).state;'
+
+  - platform: template
+    name: "SEN55 Force Manual Clean"
+    entity_category: "config"
+    on_press:
+      then:
+        - sen5x.start_fan_autoclean: sen55
+        
+  - platform: template
+    name: "Beep Button"
+    on_press:
+      - output.ledc.set_frequency:
+          id: buzzer_output
+          frequency: "500Hz"  # Set frequency for beep
+      - output.set_level:
+          id: buzzer_output
+          level: "5%"  # Set intensity/volume
+      - delay: 100ms  # Beep duration
+      - output.set_level:
+          id: buzzer_output
+          level: "0%"  # Turn off buzzer
+
+  - platform: template
+    name: "sen55 init Button"
+    on_press:
+      then:
+        - script.execute: init_sen55
+
+number:
+  - platform: template
+    name: "CO2 Calibration Value"
+    optimistic: true
+    min_value: 380
+    max_value: 440
+    step: 5
+    id: co2_cal
+    icon: "mdi:molecule-co2"
+    entity_category: "config"
+
+  - platform: template
+    name: Humidity Offset
+    id: humidity_offset
+    restore_value: true
+    initial_value: 0.0
+    min_value: -70.0
+    max_value: 70.0
+    entity_category: "CONFIG"
+    unit_of_measurement: "%"
+    optimistic: true
+    update_interval: never
+    step: 0.1
+    mode: box
+
+  - platform: template
+    name: Temperature Offset
+    id: temperature_offset
+    restore_value: true
+    initial_value: 0.0
+    min_value: -70.0
+    max_value: 70.0
+    entity_category: "CONFIG"
+    unit_of_measurement: "°C"
+    optimistic: true
+    update_interval: never
+    step: 0.1
+    mode: box
+
+display:
+  - platform: waveshare_epaper
+    id: eink_display
+    model: 1.54inv2
+    cs_pin: GPIO04
+    dc_pin: GPIO03
+    reset_pin: GPIO02
+    busy_pin: GPIO01
+    full_update_every: 100
+    update_interval: 60s
+    lambda: |-
+      const int width  = it.get_width();
+      const int height = it.get_height();
+
+      // ----- MENU OVERRIDE -----
+      if (id(main_menu).is_active()) {
+        it.menu(20, 50, id(main_menu), width, height - 50);
+        return;
+      }
+
+      // ----- LAYOUT CONSTANTS -----
+      const int MARGIN      = 5;   // Outer margin of the entire table
+      const int COL_SPACING = 4;   // Horizontal spacing between columns
+      const int ROW_SPACING = 4;   // Vertical spacing between rows
+      const int CO2_HEIGHT  = 70;  // Height of the full-width CO2 row
+      const int CELL_H      = 48;  // Height of each grid cell
+      const int VALUE_RPAD  = 5;   // Right padding for the value (aligns to right edge)
+      const int LABEL_PAD   = 3;   // Uniform padding from top-left for labels
+
+      // ----- TABLE GEOMETRY -----
+      const int tbl_x = MARGIN;
+      const int tbl_y = MARGIN;
+      const int tbl_w = width - 2 * MARGIN;
+      const int cell_w = (tbl_w - COL_SPACING) / 2;
+      const int tbl_h = CO2_HEIGHT + ROW_SPACING + 2 * CELL_H + ROW_SPACING;
+
+      // ----- DRAW OUTER FRAME & DIVIDERS -----
+      it.rectangle(tbl_x, tbl_y, tbl_w, tbl_h);  // full table border
+
+      // Divider lines between rows and columns
+      int h1_y = tbl_y + CO2_HEIGHT + ROW_SPACING / 2;
+      int h2_y = h1_y + CELL_H + ROW_SPACING;
+      int v_div_x = tbl_x + cell_w + COL_SPACING / 2;
+      it.line(tbl_x, h1_y, tbl_x + tbl_w, h1_y);        // horizontal divider 1
+      it.line(tbl_x, h2_y, tbl_x + tbl_w, h2_y);        // horizontal divider 2
+      it.line(v_div_x, h1_y, v_div_x, tbl_y + tbl_h);   // vertical divider
+
+      // ----- DRAW LABEL -----
+      auto draw_label = [&](int x, int y, int w, int h, const char* txt) {
+        // This function places the label at top-left of the cell using a single LABEL_PAD
+        int txt_x = x + LABEL_PAD;
+        int txt_y = y + LABEL_PAD;
+        it.print(txt_x, txt_y, id(l12), TextAlign::TOP_LEFT, txt);
+      };
+
+      // ----- DRAW CO2 FULL-WIDTH ROW -----
+      draw_label(tbl_x, tbl_y, tbl_w, CO2_HEIGHT, "CO2");
+
+      if (!isnan(id(CO2).state)) {
+        char buf[8];
+        snprintf(buf, sizeof(buf), "%.0f", id(CO2).state);
+
+        // Measure text to vertically center it more accurately
+        int bx, by, bw, bh;
+        it.get_text_bounds(0, 0, buf, id(large_font), TextAlign::TOP_CENTER, &bx, &by, &bw, &bh);
+
+        int center_x = tbl_x + tbl_w / 2;
+        int center_y = tbl_y + (CO2_HEIGHT + LABEL_PAD) / 2;  // mid of available area minus top padding
+        int txt_y = center_y - bh / 2;
+
+        it.print(center_x, txt_y, id(large_font), TextAlign::TOP_CENTER, buf);
+      }
+
+      // ----- SENSOR GRID STRUCTURE -----
+      struct MetricCell {
+        const char* label;
+        std::function<float()> getter;
+        const char* fmt;
+      };
+
+      static const MetricCell GRID[2][2] = {
+        {{"VOC",   [](){ return id(voc).state; },   "%.0f"},
+        {"NOX",   [](){ return id(nox).state; },   "%.0f"}},
+        {{"PM2.5", [](){ return id(PM2_5).state; }, "%.1f"},
+        {"PM10",  [](){ return id(PM10_0).state; },"%.1f"}}
+      };
+
+      // ----- DRAW VALUE -----
+      auto draw_value = [&](int x, int y, int w, int h, const char* txt) {
+        // Measures text bounds so we can center vertically
+        int bx, by, bw, bh;
+        it.get_text_bounds(0, 0, txt, id(small_font), TextAlign::TOP_RIGHT, &bx, &by, &bw, &bh);
+
+        int txt_x = x + w - VALUE_RPAD;          // right-align the value
+        int txt_y = y + (h - bh) / 2;            // vertical centering within cell
+        it.print(txt_x, txt_y, id(small_font), TextAlign::TOP_RIGHT, txt);
+      };
+
+      // ----- DRAW EACH SENSOR CELL -----
+      auto draw_cell = [&](int col, int row, const MetricCell& cell) {
+        int x = MARGIN + col * (cell_w + COL_SPACING);
+        int y = tbl_y + CO2_HEIGHT + ROW_SPACING + row * (CELL_H + ROW_SPACING);
+        int w = cell_w;
+        int h = CELL_H;
+
+        draw_label(x, y, w, h, cell.label);
+
+        float v = cell.getter();
+        if (strcmp(cell.label, "NOX") == 0 && v > 500.0f) return;  // clamp NOX if too high
+        if (!isnan(v) && v != 0.0f) {
+          char buf[8];
+          snprintf(buf, sizeof(buf), cell.fmt, v);
+          draw_value(x, y, w, h, buf);
+        }
+      };
+
+      // ----- RENDER GRID -----
+      for (int r = 0; r < 2; ++r)
+        for (int c = 0; c < 2; ++c)
+          draw_cell(c, r, GRID[r][c]);
+
+
+      // ----- FOOTER -----
+      const int footer_y = height - 14;
+      const int margin_x = 5;
+
+      auto now = id(sntp_time).now();
+      std::string time_str = now.strftime("%H:%M");
+
+      time_t raw = now.timestamp;
+      struct tm t;
+      localtime_r(&raw, &t);
+      const char* wk[] = {"su", "ma", "ti", "ke", "to", "pe", "la"};
+
+      char date_buf[32];
+      snprintf(date_buf, sizeof(date_buf), "%s %d.%d.", wk[t.tm_wday], t.tm_mday, t.tm_mon + 1);
+
+      it.print(margin_x, footer_y, id(l12), TextAlign::TOP_LEFT, date_buf);
+
+      int x1, y1, date_w, date_h;
+      it.get_text_bounds(margin_x, footer_y, date_buf, id(l12), TextAlign::TOP_LEFT, &x1, &y1, &date_w, &date_h);
+
+      int time_x = margin_x + date_w + 2;
+      it.print(time_x, footer_y, id(l12), TextAlign::TOP_LEFT, time_str.c_str());
+
+      float v = id(battery_voltage).state;
+      const char* battery_icon = (v >= 4.15f) ? "\U0000e1a4" :
+                                 (v >= 4.0f ) ? "\U0000e1a4" :
+                                 (v >= 3.85f) ? "\U0000ebd4" :
+                                 (v >= 3.70f) ? "\U0000ebd4" :
+                                 (v >= 3.50f) ? "\U0000ebdd" : "\U0000e19c";
+
+      bool wifi_ok = id(wifi_signal_db).has_state() && id(wifi_signal_db).state > -90;
+      const char* wifi_icon = wifi_ok ? "\U0000E63E" : "\U0000E648";
+
+      it.print(width - margin_x, footer_y, id(font_battery_icons), TextAlign::TOP_RIGHT, battery_icon);
+      it.print(width - 20, footer_y, id(font_battery_icons), TextAlign::TOP_RIGHT, wifi_icon);
+
+graphical_display_menu:
+  id: main_menu
+  font: f16
+  active: false
+  items:
+    - type: command
+      text: "New File"
+      on_value:
+        then:
+           - display_menu.hide: main_menu
+    - type: command
+      text: "Full screen update"
+      on_value:
+        then:
+          - display_menu.hide: main_menu
+          - lambda: |-
+              id(eink_display).fill(COLOR_OFF);    // Fill white
+              id(eink_display).update();           // Triggers a full update if enough time has passed
+    - type: label
+      text: "Open File"
+    - type: command
+      text: "Clean SEN55"
+      on_value:
+        then:
+          - sen5x.start_fan_autoclean: sen55
+    - type: command
+      text: "Calibrate SCD4X"
+      on_value:
+        then:
+          - scd4x.perform_forced_calibration:
+              value: !lambda 'return id(co2_cal).state;'
+    - type: command
+      text: "Reboot"
+      on_value:
+        then:
+          - lambda: |-
+              id(eink_display).fill(COLOR_OFF);
+              id(eink_display).update();
+          - delay: 1000ms  # give time for screen refresh
+          - button.press: reboot_button
+
+    - type: command
+      text: "Beep"
+      on_value:
+        then:
+          - script.execute: beep_once
+          - display_menu.hide: main_menu
+
+    - type: switch
+      text: "SEN55 Enabled"
+      switch: sen55_enabled
+    - type: command
+      text: "Close"
+      on_value:
+        then:
+          - display_menu.hide: main_menu
+
+font:
+  - file:
+      type: gfonts
+      family: Noto Sans Display
+      weight: 400
+    glyphs: ['&', '@', '!', ',', '.', '"', '%', '(', ')', '+', '-', '_', ':', '°', '0',
+        '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E',
+        'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
+        'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', 'a', 'b', 'c', 'd', 'e', 'f',
+        'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+        'u', 'v', 'w', 'x', 'y', 'z','å', 'ä', 'ö', '/', 'µ', '³', '’']
+    id: l16
+    size: 16
+  - file:
+      type: gfonts
+      family: Noto Sans Display
+      weight: 500
+    glyphs: ['&', '@', '!', ',', '.', '"', '%', '(', ')', '+', '-', '_', ':', '°', '0',
+        '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E',
+        'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
+        'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', 'a', 'b', 'c', 'd', 'e', 'f',
+        'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+        'u', 'v', 'w', 'x', 'y', 'z','å', 'ä', 'ö', '/', 'µ', '³', '’']
+    id: f16
+    size: 16
+  - file:
+      type: gfonts
+      family: Noto Sans Display
+      weight: 500
+    glyphs: ['&', '@', '!', ',', '.', '"', '%', '(', ')', '+', '-', '_', ':', '°', '0',
+        '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E',
+        'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
+        'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', 'a', 'b', 'c', 'd', 'e', 'f',
+        'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+        'u', 'v', 'w', 'x', 'y', 'z','å', 'ä', 'ö', '/', 'µ', '³', '’']
+    id: f18
+    size: 18
+  - file:
+      type: gfonts
+      family: Noto Sans Display
+      weight: 400
+    id: l10
+    size: 10
+    glyphs: ['&', '@', '!', ',', '.', '"', '%', '(', ')', '+', '-', '_', ':', '°', '0',
+        '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E',
+        'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
+        'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', 'a', 'b', 'c', 'd', 'e', 'f',
+        'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+        'u', 'v', 'w', 'x', 'y', 'z','å', 'ä', 'ö', '/', 'µ', '³', '’']
+  - file:
+      type: gfonts
+      family: Roboto Mono
+      weight: 500
+    id: f12
+    size: 12
+    glyphs: ['&', '@', '!', ',', '.', '"', '%', '(', ')', '+', '-', '_', ':', '°', '0',
+        '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E',
+        'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
+        'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', 'a', 'b', 'c', 'd', 'e', 'f',
+        'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+        'u', 'v', 'w', 'x', 'y', 'z','å', 'ä', 'ö', '/', 'µ', '³', '’']
+  - file:
+      type: gfonts
+      family: Noto Sans
+      weight: 100
+    id: l12
+    size: 12
+    glyphs: ['&', '@', '!', ',', '.', '"', '%', '(', ')', '+', '-', '_', ':', '°', '0',
+        '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E',
+        'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
+        'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', 'a', 'b', 'c', 'd', 'e', 'f',
+        'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+        'u', 'v', 'w', 'x', 'y', 'z','å', 'ä', 'ö', '/', 'µ', '³', '’', '|']
+  - file:
+      type: gfonts
+      family: Noto Sans Display
+      weight: 500
+    id: f24
+    size: 24
+    glyphs: ['&', '@', '!', ',', '.', '"', '%', '(', ')', '+', '-', '_', ':', '°', '0',
+        '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E',
+        'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
+        'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', 'a', 'b', 'c', 'd', 'e', 'f',
+        'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+        'u', 'v', 'w', 'x', 'y', 'z','å', 'ä', 'ö', '/', 'µ', '³', '’']
+  - file:
+      type: gfonts
+      family: Noto Sans Display
+      weight: 400
+    id: l24
+    size: 24
+    glyphs: ['&', '@', '!', ',', '.', '"', '%', '(', ')', '+', '-', '_', ':', '°', '0',
+        '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E',
+        'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
+        'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', 'a', 'b', 'c', 'd', 'e', 'f',
+        'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+        'u', 'v', 'w', 'x', 'y', 'z','å', 'ä', 'ö', '/', 'µ', '³', '’']
+  - file:
+      type: gfonts
+      family: Noto Sans Display
+      weight: 400
+    id: f32
+    size: 32
+    glyphs: ['&', '@', '!', ',', '.', '"', '%', '(', ')', '+', '-', '_', ':', '°', '0',
+        '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E',
+        'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
+        'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', 'a', 'b', 'c', 'd', 'e', 'f',
+        'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+        'u', 'v', 'w', 'x', 'y', 'z','å', 'ä', 'ö', '/', 'µ', '³', '’']
+  - file:
+      type: gfonts
+      family: Noto Sans Display
+      weight: 400
+    id: f36
+    size: 36
+    glyphs: ['&', '@', '!', ',', '.', '"', '%', '(', ')', '+', '-', '_', ':', '°', '0',
+        '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E',
+        'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
+        'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', 'a', 'b', 'c', 'd', 'e', 'f',
+        'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+        'u', 'v', 'w', 'x', 'y', 'z','å', 'ä', 'ö', '/', 'µ', '³', '’']
+  - file:
+      type: gfonts
+      family: Open Sans
+      weight: 400
+    id: small_font
+    size: 36
+    glyphs: ['&', '@', '!', ',', '.', '"', '%', '(', ')', '+', '-', '_', ':', '°', '0',
+        '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E',
+        'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
+        'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', 'a', 'b', 'c', 'd', 'e', 'f',
+        'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+        'u', 'v', 'w', 'x', 'y', 'z','å', 'ä', 'ö', '/', 'µ', '³', '’']
+  - file:
+      type: gfonts
+      family: Fira Code
+      weight: 400
+    id: f35
+    size: 35
+    glyphs: ['&', '@', '!', ',', '.', '"', '%', '(', ')', '+', '-', '_', ':', '°', '0',
+        '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E',
+        'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
+        'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', 'a', 'b', 'c', 'd', 'e', 'f',
+        'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+        'u', 'v', 'w', 'x', 'y', 'z','å', 'ä', 'ö', '/', 'µ', '³', '’']
+  - file:
+      type: gfonts
+      family: Noto Sans
+      weight: 300
+    id: large_font
+    size: 64
+    glyphs: ['&', '@', '!', ',', '.', '"', '%', '(', ')', '+', '-', '_', ':', '°', '0',
+        '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E',
+        'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
+        'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', 'a', 'b', 'c', 'd', 'e', 'f',
+        'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+        'u', 'v', 'w', 'x', 'y', 'z','å', 'ä', 'ö', '/', 'µ', '³', '’']
+  - file:
+      type: gfonts
+      family: Fira Code
+      weight: 300
+    id: f60
+    size: 60
+    glyphs: ['&', '@', '!', ',', '.', '"', '%', '(', ')', '+', '-', '_', ':', '°', '0',
+        '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E',
+        'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
+        'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', 'a', 'b', 'c', 'd', 'e', 'f',
+        'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+        'u', 'v', 'w', 'x', 'y', 'z','å', 'ä', 'ö', '/', 'µ', '³', '’']
+  - file:
+      type: gfonts
+      family: Noto Sans Display
+      weight: 500
+    id: ff32
+    size: 32
+    glyphs: ['&', '@', '!', ',', '.', '"', '%', '(', ')', '+', '-', '_', ':', '°', '0',
+        '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E',
+        'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
+        'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', 'a', 'b', 'c', 'd', 'e', 'f',
+        'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+        'u', 'v', 'w', 'x', 'y', 'z','å', 'ä', 'ö', '/', 'µ', '³', '’']
+
+  - file:
+      type: gfonts
+      family: Noto Sans Display
+      weight: 500
+    id: f64
+    size: 64
+    glyphs: ['&', '@', '!', ',', '.', '"', '%', '(', ')', '+', '-', '_', ':', '°', '0',
+        '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E',
+        'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
+        'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', 'a', 'b', 'c', 'd', 'e', 'f',
+        'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+        'u', 'v', 'w', 'x', 'y', 'z','å', 'ä', 'ö', '/', 'µ', '³', '’']
+
+  - file:
+      type: gfonts
+      family: Noto Sans Display
+      weight: 800
+    id: f64b
+    size: 64
+    glyphs: ['&', '@', '!', ',', '.', '"', '%', '(', ')', '+', '-', '_', ':', '°', '0',
+        '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E',
+        'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
+        'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', 'a', 'b', 'c', 'd', 'e', 'f',
+        'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+        'u', 'v', 'w', 'x', 'y', 'z','å', 'ä', 'ö', '/', 'µ', '³', '’']
+
+  - file:
+      type: gfonts
+      family: Noto Sans Display
+      weight: 800
+    id: f55b
+    size: 55
+    glyphs: ['&', '@', '!', ',', '.', '"', '%', '(', ')', '+', '-', '_', ':', '°', '0',
+        '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E',
+        'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
+        'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', 'a', 'b', 'c', 'd', 'e', 'f',
+        'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+        'u', 'v', 'w', 'x', 'y', 'z','å', 'ä', 'ö', '/', 'µ', '³', '’']
+
+  - file: 
+      type: gfonts
+      family: Material Symbols Sharp
+      weight: 200
+    id: font_battery_icons
+    size: 12
+    glyphs:
+      - "\U0000e19c"  # battery alarm
+      - "\U0000ebdc"  # battery empty
+      - "\U0000ebd9"  # battery 1 bar
+      - "\U0000ebe0"  # battery 2 bar
+      - "\U0000ebdd"  # battery 3 bar
+      - "\U0000ebe2"  # battery 4 bar
+      - "\U0000ebd4"  # battery 5 bar
+      - "\U0000e1a4"  # battery full
+      - "\U0000e1a3"  # battery charging full
+      - "\U0000E63E"  # wifi
+      - "\U0000E648"  # wifi_off
+      ## battery horizontal 0
+      - "\U0000f8ae"  # battery horizontal empty
+      - "\U0000f8af"  # battery horizontal 50%
+      - "\U0000f8b0"  # battery horizontal 75%
+      - "\U0000f13b"  # battery horizontal full 
+
+
+  - file: 
+      type: gfonts
+      family: Material Symbols Sharp
+      weight: 400
+    id: font_weather_icons_xsmall
+    size: 20
+    glyphs:
+      - "\U0000F159" # clear-night
+      - "\U0000F15B" # cloudy
+      - "\U0000F172" # partlycloudy
+      - "\U0000E818" # fog      
+      - "\U0000F67F" # hail
+      - "\U0000EBDB" # lightning, lightning-rainy
+      - "\U0000F61F" # pouring
+      - "\U0000F61E" # rainy
+      - "\U0000F61C" # snowy
+      - "\U0000F61D" # snowy-rainy
+      - "\U0000E81A" # sunny
+      - "\U0000EFD8" # windy, windy-variant
+      - "\U0000F7F3" # exceptional
+  - file: 
+      type: gfonts
+      family: Material Symbols Sharp
+      weight: 400
+    id: font_weather_icons_small
+    size: 32
+    glyphs:
+      - "\U0000F159" # clear-night
+      - "\U0000F15B" # cloudy
+      - "\U0000F172" # partlycloudy
+      - "\U0000E818" # fog      
+      - "\U0000F67F" # hail
+      - "\U0000EBDB" # lightning, lightning-rainy
+      - "\U0000F61F" # pouring
+      - "\U0000F61E" # rainy
+      - "\U0000F61C" # snowy
+      - "\U0000F61D" # snowy-rainy
+      - "\U0000E81A" # sunny
+      - "\U0000EFD8" # windy, windy-variant
+      - "\U0000F7F3" # exceptional
+
+  - file:
+      type: gfonts
+      family: Open Sans
+      weight: 700    
+    id: font_clock
+    glyphs: "0123456789:"
+    size: 70
+  - file:
+      type: gfonts
+      family: Open Sans
+      weight: 700    
+    id: font_clock_big
+    glyphs: "0123456789:"
+    size: 100
+  - file: "gfonts://Roboto"
+    id: font_temp
+    size: 28
+  - file:
+      type: gfonts
+      family: Noto Sans
+      weight: 500    
+    id: font_small
+    size: 30
+    glyphs: "!\"%()+=,-_.:°0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz»"
+  - file:
+      type: gfonts
+      family: Open Sans
+      weight: 500    
+    id: font_medium
+    size: 45
+    glyphs: "!\"%()+=,-_.:°0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz»"
+  - file:
+      type: gfonts
+      family: Open Sans
+      weight: 300    
+    id: font_xsmall
+    size: 16  
+    glyphs: "!\"%()+=,-_.:°0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz»"
