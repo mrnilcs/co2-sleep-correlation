@@ -16,6 +16,31 @@ To determine whether indoor CO₂ levels during sleep correlate with Oura sleep 
 
 ## 🧪 Methodology
 
+
+### 🔧 Devices Used in the Study
+
+<div align="center">
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="images/m5stackairq.png" width="180" alt="M5Stack AirQ"/><br/>
+      <strong>M5Stack AirQ</strong><br/>
+      <em>SCD4x CO₂ sensor running ESPHome</em><br/>
+      [🔗 Product page](https://shop.m5stack.com/products/m5stack-atom-air-quality-kit)
+    </td>
+    <td align="center">
+      <img src="images/ouraring.png" width="180" alt="Oura Ring"/><br/>
+      <strong>Oura Ring Gen 3</strong><br/>
+      <em>Sleep and readiness metrics</em><br/>
+      [🔗 Official site](https://ouraring.com/)
+    </td>
+  </tr>
+</table>
+
+</div>
+
+
 ### 1. CO₂ Data Collection
 
 * CO₂ values were recorded using a Home Assistant-integrated **SCD4x sensor** running ESPHome on an M5Stack StampS3.
